@@ -14,19 +14,19 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="pch">
-      <UniqueIdentifier>{9a6d4366-974e-4d82-b190-a0ba77b812c9}</UniqueIdentifier>
+      <UniqueIdentifier>{468bd420-ff63-4bd5-8037-1b202c26130a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CA_Main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>pch</Filter>
     </ClCompile>
+    <ClCompile Include="GC_Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CA_pch.h">
+    <ClInclude Include="GC_pch.h">
       <Filter>pch</Filter>
     </ClInclude>
   </ItemGroup>

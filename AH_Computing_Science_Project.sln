@@ -3,7 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29102.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AH_Computing_Science_Project", "AH_Computing_Science_Project\AH_Computing_Science_Project.vcxproj", "{963953C5-25B6-4B98-AC0D-BD85F39873F6}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Client App", "AH_Computing_Science_Project\AH_Computing_Science_Project.vcxproj", "{963953C5-25B6-4B98-AC0D-BD85F39873F6}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game Coordinator", "Game Coordinator\Game Coordinator.vcxproj", "{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game Server", "Game Server\Game Server.vcxproj", "{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +25,22 @@ Global
 		{963953C5-25B6-4B98-AC0D-BD85F39873F6}.Release|x64.Build.0 = Release|x64
 		{963953C5-25B6-4B98-AC0D-BD85F39873F6}.Release|x86.ActiveCfg = Release|Win32
 		{963953C5-25B6-4B98-AC0D-BD85F39873F6}.Release|x86.Build.0 = Release|Win32
+		{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}.Debug|x64.ActiveCfg = Debug|x64
+		{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}.Debug|x64.Build.0 = Debug|x64
+		{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}.Debug|x86.ActiveCfg = Debug|Win32
+		{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}.Debug|x86.Build.0 = Debug|Win32
+		{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}.Release|x64.ActiveCfg = Release|x64
+		{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}.Release|x64.Build.0 = Release|x64
+		{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}.Release|x86.ActiveCfg = Release|Win32
+		{94B8DBA3-D58A-4ABC-A559-A6FD0A8ED57C}.Release|x86.Build.0 = Release|Win32
+		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Debug|x64.ActiveCfg = Debug|x64
+		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Debug|x64.Build.0 = Debug|x64
+		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Debug|x86.ActiveCfg = Debug|Win32
+		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Debug|x86.Build.0 = Debug|Win32
+		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Release|x64.ActiveCfg = Release|x64
+		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Release|x64.Build.0 = Release|x64
+		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Release|x86.ActiveCfg = Release|Win32
+		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
