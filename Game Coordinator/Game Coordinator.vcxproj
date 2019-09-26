@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -78,9 +78,14 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeader />
+      <AdditionalIncludeDirectories>C:\Program Files\MySQL\Connector C++ 8.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>-DSTATIC_CONCPP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
+      <AdditionalLibraryDirectories>C:\Program Files\MySQL\Connector C++ 8.0\lib64;C:\Program Files\MySQL\Connector C++ 8.0\lib64\vs14;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mysqlcppconn8-static.lib;ssleay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -91,9 +96,14 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeader />
+      <AdditionalIncludeDirectories>C:\Program Files\MySQL\Connector C++ 8.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>-DSTATIC_CONCPP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
+      <AdditionalLibraryDirectories>C:\Program Files\MySQL\Connector C++ 8.0\lib64;C:\Program Files\MySQL\Connector C++ 8.0\lib64\vs14;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mysqlcppconn8-static.lib;ssleay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -106,11 +116,16 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeader />
+      <AdditionalIncludeDirectories>C:\Program Files\MySQL\Connector C++ 8.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>-DSTATIC_CONCPP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>C:\Program Files\MySQL\Connector C++ 8.0\lib64;C:\Program Files\MySQL\Connector C++ 8.0\lib64\vs14;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mysqlcppconn8-static.lib;ssleay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -123,14 +138,20 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeader />
+      <AdditionalIncludeDirectories>C:\Program Files\MySQL\Connector C++ 8.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>-DSTATIC_CONCPP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>C:\Program Files\MySQL\Connector C++ 8.0\lib64;C:\Program Files\MySQL\Connector C++ 8.0\lib64\vs14;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mysqlcppconn8-static.lib;ssleay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Coordinator.cpp" />
     <ClCompile Include="GC_Main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -144,6 +165,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Coordinator.h" />
     <ClInclude Include="GC_pch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
