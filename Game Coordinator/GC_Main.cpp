@@ -21,7 +21,9 @@ int main() {
 		std::cout << "Failed to start server.";
 		return 1;
 	}
-	
 
-
+	if (!gameCoordinator.run()) {
+		return 1;
+	}
+	return 0;
 }

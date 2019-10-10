@@ -6,14 +6,23 @@ class Coordinator {
 public:
 	bool init(); // Initalize winsock
 	bool startServer(); // Prepare game coordinator
-	bool connectionsThread(); // Thread for accepting client connections
-	bool clientThread(SOCKET clientSocket); // Thread for handling an individual client
+	bool run(); // Run the game coordinator
+
 private:
-	const char* PORT_NUM = "56535";
-	const char* HOSTNAME = "mae_ahcompsci_gc";
+	bool userConnectionsThread(); // Thread for accepting client connections
+	bool gameServerConnectionsThread(); // Thread for accepting game server connections
+	bool userThread(LPVOID clientSocket); // Thread for handling an individual client
+	bool gameServerThread(LPVOID serverSocket); // Thread for handling an individual game server
 
-	struct addrinfo* m_result = NULL, * ptr = NULL, hints;
+#define GAMESERVER_PORT "56534"
+#define USER_PORT "56535"
+	//const char* HOSTNAME = "mae_ahcompsci_gc";
 
-	std::thread*				m_connectionsThread;
-	std::vector<std::thread>	m_clientThreads;
+	SOCKET m_UserListenSocket;
+	SOCKET m_GameServerListenSocket;
+
+	std::thread*				m_userConnectionsThread;
+	std::thread*				m_serverConnectionsThread;
+	std::vector<std::thread>	m_userThreads;
+	std::vector<std::thread>	m_serverThreads;
 };

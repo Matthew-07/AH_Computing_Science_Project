@@ -9,6 +9,15 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game Coordinator", "Game Co
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game Server", "Game Server\Game Server.vcxproj", "{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AH_Tests", "AH_Tests\AH_Tests.vcxproj", "{AB37B990-2189-4B31-B732-ACDB4064E696}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{B6A194AA-0BF4-47CD-B47E-B3F49FF47FA9}"
+	ProjectSection(SolutionItems) = preProject
+		AH_Tests\Batch files\RUN_GCx1andGSx1.bat = AH_Tests\Batch files\RUN_GCx1andGSx1.bat
+		AH_Tests\Batch files\RUN_GCx1andGSx3.bat = AH_Tests\Batch files\RUN_GCx1andGSx3.bat
+		AH_Tests\Batch files\RUN_GSx3.bat = AH_Tests\Batch files\RUN_GSx3.bat
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +50,14 @@ Global
 		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Release|x64.Build.0 = Release|x64
 		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Release|x86.ActiveCfg = Release|Win32
 		{DC1CFF62-621C-453C-BFF1-C7C3A92A2827}.Release|x86.Build.0 = Release|Win32
+		{AB37B990-2189-4B31-B732-ACDB4064E696}.Debug|x64.ActiveCfg = Debug|x64
+		{AB37B990-2189-4B31-B732-ACDB4064E696}.Debug|x64.Build.0 = Debug|x64
+		{AB37B990-2189-4B31-B732-ACDB4064E696}.Debug|x86.ActiveCfg = Debug|Win32
+		{AB37B990-2189-4B31-B732-ACDB4064E696}.Debug|x86.Build.0 = Debug|Win32
+		{AB37B990-2189-4B31-B732-ACDB4064E696}.Release|x64.ActiveCfg = Release|x64
+		{AB37B990-2189-4B31-B732-ACDB4064E696}.Release|x64.Build.0 = Release|x64
+		{AB37B990-2189-4B31-B732-ACDB4064E696}.Release|x86.ActiveCfg = Release|Win32
+		{AB37B990-2189-4B31-B732-ACDB4064E696}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

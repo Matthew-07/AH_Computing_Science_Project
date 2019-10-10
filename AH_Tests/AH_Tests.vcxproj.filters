@@ -13,27 +13,32 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="pch">
-      <UniqueIdentifier>{68fe4a3d-ed18-40b4-b704-89f99ff2e306}</UniqueIdentifier>
+    <Filter Include="Batch File Tests">
+      <UniqueIdentifier>{31ee2cae-f276-4751-aa68-209404688166}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GS_Main.cpp">
+    <ClCompile Include="AH_Tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
-      <Filter>pch</Filter>
-    </ClCompile>
-    <ClCompile Include="Server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GS_pch.h">
-      <Filter>pch</Filter>
-    </ClInclude>
-    <ClInclude Include="Server.h">
+    <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Batch files\RUN_GCx1andGSx1.bat">
+      <Filter>Batch File Tests</Filter>
+    </None>
+    <None Include="Batch files\RUN_GCx1andGSx3.bat">
+      <Filter>Batch File Tests</Filter>
+    </None>
+    <None Include="Batch files\RUN_GSx3.bat">
+      <Filter>Batch File Tests</Filter>
+    </None>
   </ItemGroup>
 </Project>
