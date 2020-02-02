@@ -40,5 +40,8 @@
     <None Include="Batch files\RUN_GSx3.bat">
       <Filter>Batch File Tests</Filter>
     </None>
+    <None Include="Batch files\RUN_GSx1.bat">
+      <Filter>Batch File Tests</Filter>
+    </None>
   </ItemGroup>
 </Project>

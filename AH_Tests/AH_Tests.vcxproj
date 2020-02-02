@@ -174,6 +174,7 @@
   <ItemGroup>
     <None Include="Batch files\RUN_GCx1andGSx1.bat" />
     <None Include="Batch files\RUN_GCx1andGSx3.bat" />
+    <None Include="Batch files\RUN_GSx1.bat" />
     <None Include="Batch files\RUN_GSx3.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

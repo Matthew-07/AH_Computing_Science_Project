@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <fstream>
 
 #pragma comment(lib, "Ws2_32.lib")
 

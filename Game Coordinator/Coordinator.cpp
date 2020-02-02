@@ -105,6 +105,8 @@ bool Coordinator::startServer()
 }
 
 bool Coordinator::userConnectionsThread() {
+	SOCKET ClientSocket;
+
 	while (true) {
 		if (listen(m_UserListenSocket, SOMAXCONN) == SOCKET_ERROR) {
 			printf("Listen failed with error: %ld\n", WSAGetLastError());
@@ -113,15 +115,13 @@ bool Coordinator::userConnectionsThread() {
 			return false;
 		}
 
-		SOCKET ClientSocket = INVALID_SOCKET;
-
 		// Accept a client socket
 		ClientSocket = accept(m_UserListenSocket, NULL, NULL);
-		if (ClientSocket == INVALID_SOCKET) {
-			printf("accept failed: %d\n", WSAGetLastError());
-		}
+		//if (ClientSocket == INVALID_SOCKET) {
+		//	printf("accept failed: %d\n", WSAGetLastError());
+		//}
 
-		m_userThreads.push_back(std::thread([&]() {gameServerThread((LPVOID)ClientSocket); }));
+		m_serverThreads.push_back(std::thread([&]() {userThread((LPVOID)ClientSocket); }));
 	}
 
 	return true;
@@ -194,9 +194,5 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 			closesocket(serverSocket);
 			return false;
 		}
-		//else { Sleep(0.01); }
 	}
-
-	std::cout << "Thread exit";
-	return false;
 }

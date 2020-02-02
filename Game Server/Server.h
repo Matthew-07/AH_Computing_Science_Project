@@ -6,5 +6,7 @@ public:
 	bool init();
 	bool start();
 private:
-	
+	bool senddata(SOCKET sock, void* buf, int buflen);
+	int MAXGAMES = 1;
+	std::string MAXGAMESMSG;
 };

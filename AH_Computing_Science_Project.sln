@@ -15,6 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{B6A194
 	ProjectSection(SolutionItems) = preProject
 		AH_Tests\Batch files\RUN_GCx1andGSx1.bat = AH_Tests\Batch files\RUN_GCx1andGSx1.bat
 		AH_Tests\Batch files\RUN_GCx1andGSx3.bat = AH_Tests\Batch files\RUN_GCx1andGSx3.bat
+		AH_Tests\Batch files\RUN_GSx1.bat = AH_Tests\Batch files\RUN_GSx1.bat
 		AH_Tests\Batch files\RUN_GSx3.bat = AH_Tests\Batch files\RUN_GSx3.bat
 	EndProjectSection
 EndProject
