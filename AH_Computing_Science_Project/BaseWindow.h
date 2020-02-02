@@ -65,7 +65,7 @@ public:
 
 		m_hwnd = CreateWindowEx(
 			dwExStyle, ClassName(), lpWindowName, dwStyle, x, y,
-			nWidth, nHeight, hWndParent, hMenu, GetModuleHandle(NULL), this
+			nWidth, nHeight, hWndParent, hMenu, m_inst, this
 		);
 
 		return (m_hwnd ? TRUE : FALSE);

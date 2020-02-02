@@ -24,3 +24,12 @@
 #include <iostream>
 
 #pragma comment(lib, "Ws2_32.lib")
+
+template <class T> void SafeRelease(T** ppT)
+{
+	if (*ppT)
+	{
+		(*ppT)->Release();
+		*ppT = NULL;
+	}
+}
