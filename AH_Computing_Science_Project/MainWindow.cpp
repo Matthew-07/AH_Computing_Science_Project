@@ -11,6 +11,7 @@ MainWindow::MainWindow(Graphics * graphics) : pRenderTarget(NULL)
 	LoadStringW(m_inst, IDS_MAINWINDOWNAME, m_className, MAX_LOADSTRING);
 
 	myGraphics = graphics;
+	m_rect = RECT();
 }
 
 LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -43,7 +44,7 @@ void MainWindow::onPaint() {
 
 	pRenderTarget->BeginDraw();	
 
-	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(0.95,0.95,0.98)));
+	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(0.95f,0.95f,0.98f)));
 
 	// Draw Window
 

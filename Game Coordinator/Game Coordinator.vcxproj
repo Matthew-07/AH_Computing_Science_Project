@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Coordinator.cpp" />
+    <ClCompile Include="Database.cpp" />
     <ClCompile Include="GC_Main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -166,7 +167,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Coordinator.h" />
+    <ClInclude Include="Database.h" />
     <ClInclude Include="GC_pch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="createTable.sql" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

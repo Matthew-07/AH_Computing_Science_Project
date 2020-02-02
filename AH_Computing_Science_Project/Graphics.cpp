@@ -31,7 +31,7 @@ bool Graphics::init(HINSTANCE instance, int nCmdShow) {
 
 bool Graphics::createMainWindow(int nCmdShow) {
 	
-	if (!w_main->Create(L"Main Window", WS_OVERLAPPEDWINDOW)) {
+	if (!w_main->Create(L"Reflex", WS_OVERLAPPEDWINDOW)) {
 		//LPVOID lpMsgBuf;
 		//LPVOID lpDisplayBuf;
 		//DWORD dw = GetLastError();

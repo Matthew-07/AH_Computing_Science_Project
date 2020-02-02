@@ -1,5 +1,6 @@
 #include "CA_pch.h"
 #include "Graphics.h"
+#include "Network.h"
 
 // Main function for windows application
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -9,6 +10,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 
 	// Connect to server
+	Network network = Network();
+	if (!network.init()) {
+		return -1;
+	}
 
 	// Initate Graphics
 	Graphics myGraphics = Graphics();

@@ -1,5 +1,6 @@
 #include "GC_pch.h"
 #include "Coordinator.h"
+#include "Database.h"
 
 int main() {
 	std::cout << "Initialising Game Coordinator." << std::endl;
@@ -7,7 +8,10 @@ int main() {
 		<< std::endl;
 
 	// To do - connect to database
-
+	Database myDatabase;
+	if (!myDatabase.init()) {
+		return 1;
+	}
 	std::cout << "Connected to database" << std::endl;
 	
 	Coordinator gameCoordinator;
