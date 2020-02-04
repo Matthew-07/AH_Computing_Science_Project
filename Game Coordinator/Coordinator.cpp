@@ -160,6 +160,20 @@ bool Coordinator::userThread(LPVOID lParam)
 
 	*/
 
+	/*
+	while (login not successful){
+		getAttemptFromUser()
+		checkIfUsernameExists()
+		checkIfPasswordCorrect()
+		checkIfUserNotAlreadyLoggedIn()
+		sendMessageToUser()
+	}
+	while (userConnected)
+	{
+		waitForCommands()
+	}
+	*/
+
 	SOCKET userSocket = (SOCKET)lParam;
 
 	return false;

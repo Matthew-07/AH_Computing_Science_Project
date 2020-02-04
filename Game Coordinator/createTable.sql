@@ -1,5 +1,19 @@
 CREATE TABLE IF NOT EXISTS users(
-id int,
-username varchar(32),
-password varchar(32)
-)
+id INTEGER PRIMARY KEY,
+username TEXT,
+password TEXT
+);
+
+CREATE TABLE IF NOT EXISTS games(
+id INTEGER PRIMARY KEY,
+played TEXT,
+duration INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS particpations(
+playerId INTEGER,
+gameId INTEGER,
+PRIMARY KEY (playerID,gameID),
+FOREIGN KEY(playerID) REFERENCES users(id),
+FOREIGN KEY(gameID) REFERENCES games(id)
+);

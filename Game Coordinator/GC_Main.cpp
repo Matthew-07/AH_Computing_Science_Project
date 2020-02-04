@@ -12,6 +12,9 @@ int main() {
 	if (!myDatabase.init()) {
 		return 1;
 	}
+
+	myDatabase.addUser("test", "password");
+
 	std::cout << "Connected to database" << std::endl;
 	
 	Coordinator gameCoordinator;
