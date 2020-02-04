@@ -18,5 +18,7 @@ private:
 
 	static int foundRowsCallback(void* a_param, int argc, char** argv, char** column); // After using callback set "foundRows" back to false
 	bool foundRows = false;
+
+
 };
 

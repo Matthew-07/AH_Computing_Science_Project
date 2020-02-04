@@ -23,6 +23,10 @@ bool Database::init() {
 	
 	char* err;
 	result = sqlite3_exec(db, ptr, NULL, NULL, &err);
+
+	sstream.clear();
+	fs.close();	
+
 	if (result != 0) {
 		// Failed to create table
 		sqlite3_close_v2(db);
@@ -41,7 +45,8 @@ bool Database::init() {
 bool Database::addUser(std::string username, std::string password)
 {
 	std::ostringstream sstream;
-	std::ifstream fs("checkUsername.sql");
+	std::ifstream fs;
+	fs.open("checkUsername.sql");
 
 	if (!fs.is_open())
 	{
@@ -53,17 +58,17 @@ bool Database::addUser(std::string username, std::string password)
 	std::string str(sstream.str());
 	const char* ptr = str.c_str();
 
-	std::cout << ptr << "\n";
+	std::cout << ptr << std::endl;
 
 	char buff[512];
 
-	sprintf_s(buff, ptr, username, password);
+	sprintf_s(buff, ptr, username);
 
-	fs.close();
 	sstream.clear();
+	fs.close();
 
-	char* err;
-	sqlite3_exec(db, buff, foundRowsCallback, this, &err);
+	char* err = NULL;
+	sqlite3_exec(db, buff, NULL, NULL, &err);
 	if (err != NULL) {
 		// Failed to run query
 		std::cout << ptr << "\n" << buff << "\n" << err << "\n";
@@ -77,7 +82,7 @@ bool Database::addUser(std::string username, std::string password)
 	}
 
 	fs.clear();
-	fs.open("createAccount.sql");
+	fs.open("CreateAccount.sql");
 
 	if (!fs.is_open())
 	{
@@ -89,10 +94,12 @@ bool Database::addUser(std::string username, std::string password)
 	std::string str2(sstream.str());
 	const char* ptr2 = str2.c_str();
 
+	std::cout << ptr2 << std::endl;
+
 	sprintf_s(buff, ptr2, username, password);
 
-	fs.close();
 	sstream.clear();
+	fs.close();
 
 	sqlite3_exec(db, buff, NULL, NULL, &err);
 	if (err != NULL) {
