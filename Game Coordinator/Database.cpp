@@ -7,108 +7,106 @@ bool Database::init() {
 		sqlite3_close_v2(db);
 		return false;
 	}
-	
-	std::ostringstream sstream;
-	std::ifstream fs("createTable.sql");
 
-	if (!fs.is_open())
-	{
-		std::cout << "Failed to load query." << std::endl;
+	if (!loadQuery("CreateTable.sql", q_createTable)) {
+		std::cout << "Failed to load 'checkUsername' query." << std::endl;
 		return false;
 	}
-
-	sstream << fs.rdbuf();
-	std::string str(sstream.str());
-	const char* ptr = str.c_str();
 	
 	char* err;
-	result = sqlite3_exec(db, ptr, NULL, NULL, &err);
-
-	sstream.clear();
-	fs.close();	
-
-	if (result != 0) {
-		// Failed to create table
-		sqlite3_close_v2(db);
-		return false;
-	}
+	sqlite3_exec(db, q_createTable.c_str(), NULL, NULL, &err);
 
 	if (err != NULL) {
 		// Failed to run query
 		std::cout << "Failed to create table." << std::endl;
 		return false;
 	}
+	
+
+	// -- Load Queries --
+	// Check Username
+	if (!loadQuery("checkUsername.sql", q_checkUsername)) {
+		std::cout << "Failed to load 'checkUsername' query." << std::endl;
+		return false;
+	}
+
+	//std::cout << q_checkUsername << std::endl;
+
+	// Create Account
+
+	if (!loadQuery("CreateAccount.sql", q_createAccount)) {
+		std::cout << "Failed to load 'createAccount' query." << std::endl;
+		return false;
+	}
+
+	//std::cout << q_createAccount << std::endl;
+
+	// Check Login
+
+	if (!loadQuery("CheckLogIn.sql", q_checkLogIn)) {
+		std::cout << "Failed to load 'checkLogIn' query." << std::endl;
+		return false;
+	}
+
+	//std::cout << q_checkLogIn << std::endl;
 
 	return true;
 }
 
-bool Database::addUser(std::string username, std::string password)
+int Database::addUser(std::string username, std::string password)
 {
-	std::ostringstream sstream;
-	std::ifstream fs;
-	fs.open("checkUsername.sql");
+	char buff[512]; // Buffer must be large enough to hold entire query
 
-	if (!fs.is_open())
-	{
-		std::cout << "Failed to load query." << std::endl;
-		return false;
-	}
-
-	sstream << fs.rdbuf();
-	std::string str(sstream.str());
-	const char* ptr = str.c_str();
-
-	std::cout << ptr << std::endl;
-
-	char buff[512];
-
-	sprintf_s(buff, ptr, username);
-
-	sstream.clear();
-	fs.close();
+	sprintf_s(buff, q_checkUsername.c_str(), username);
 
 	char* err = NULL;
-	sqlite3_exec(db, buff, NULL, NULL, &err);
+	bool foundRows = false;
+
+	sqlite3_exec(db, buff, foundRowsCallback, &foundRows, &err);
 	if (err != NULL) {
 		// Failed to run query
-		std::cout << ptr << "\n" << buff << "\n" << err << "\n";
-		return false;
+		std::cout << buff << "\n" << err << "\n";
+		return -1;
 	}
 
 	if (foundRows) {
 		std::cout << "Username in use.";
-		foundRows = false;
-		return false;
+		return -1;
 	}
 
-	fs.clear();
-	fs.open("CreateAccount.sql");
-
-	if (!fs.is_open())
-	{
-		std::cout << "Failed to load query." << std::endl;
-		return false;
-	}
-
-	sstream << fs.rdbuf();
-	std::string str2(sstream.str());
-	const char* ptr2 = str2.c_str();
-
-	std::cout << ptr2 << std::endl;
-
-	sprintf_s(buff, ptr2, username, password);
-
-	sstream.clear();
-	fs.close();
+	sprintf_s(buff, q_createAccount.c_str(), username, password);
 
 	sqlite3_exec(db, buff, NULL, NULL, &err);
 	if (err != NULL) {
 		// Failed to run query
-		std::cout << ptr2 << "\n" << err << "\n";
-		return false;
+		std::cout << buff << "\n" << err << "\n";
+		return -1;
 	}
 
-	return true;
+	std::cout << "Account created.";
+
+	return logIn(username,password);
+}
+
+int Database::logIn(std::string username, std::string password) {
+	char buff[512]; // Buffer must be large enough to hold entire query
+
+	sprintf_s(buff, q_checkLogIn.c_str(), username, password);
+
+	char* err = NULL;
+	int userId = -2;
+
+	sqlite3_exec(db, buff, returnIntCallback, &userId, &err);
+
+	std::cout << std::endl << "Buffer: " << buff << std::endl;
+
+	if (err != NULL) {
+		// Failed to run query
+		std::cout << buff << "\n" << err << "\n";
+		return -3;
+	}
+
+	return userId;
 }
 
 Database::~Database()
@@ -118,6 +116,30 @@ Database::~Database()
 
 int Database::foundRowsCallback(void* a_param, int argc, char** argv, char** column)
 {
-	static_cast<Database*>(a_param)->foundRows = true;
+	*reinterpret_cast<bool*>(a_param) = true;
 	return 0;
+}
+
+int Database::returnIntCallback(void* a_param, int argc, char** argv, char** column)
+{
+	*reinterpret_cast<int*>(a_param) = std::atoi(argv[0]);
+	return 0;
+}
+
+bool Database::loadQuery(std::string path, std::string &var)
+{
+	std::ostringstream sstream;
+	std::ifstream fs(path);
+
+	if (!fs.is_open())
+	{
+		return false;
+	}
+
+	sstream << fs.rdbuf();
+	var = std::string(sstream.str());
+
+	fs.close();
+	
+	return true;
 }

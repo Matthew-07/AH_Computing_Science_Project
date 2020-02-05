@@ -1,5 +1,5 @@
-//#include "GC_pch.h"
-//#include "Coordinator.h"
+#include "GC_pch.h"
+#include "Coordinator.h"
 #include "Database.h"
 
 int main() {
@@ -13,9 +13,9 @@ int main() {
 		return 1;
 	}
 
-	myDatabase.addUser("test", "password");
+	std::cout << "\nint:" << myDatabase.addUser("test", "password") << std::endl;
 
-	/*std::cout << "Connected to database" << std::endl;
+	std::cout << "Connected to database" << std::endl;
 	
 	Coordinator gameCoordinator;
 	
@@ -31,6 +31,6 @@ int main() {
 
 	if (!gameCoordinator.run()) {
 		return 1;
-	}*/
+	}
 	return 0;
 }
