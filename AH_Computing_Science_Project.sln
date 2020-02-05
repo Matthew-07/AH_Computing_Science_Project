@@ -17,6 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{B6A194
 		AH_Tests\Batch files\RUN_GCx1andGSx3.bat = AH_Tests\Batch files\RUN_GCx1andGSx3.bat
 		AH_Tests\Batch files\RUN_GSx1.bat = AH_Tests\Batch files\RUN_GSx1.bat
 		AH_Tests\Batch files\RUN_GSx3.bat = AH_Tests\Batch files\RUN_GSx3.bat
+		Game Coordinator\WinsockHelper.h = Game Coordinator\WinsockHelper.h
 	EndProjectSection
 EndProject
 Global

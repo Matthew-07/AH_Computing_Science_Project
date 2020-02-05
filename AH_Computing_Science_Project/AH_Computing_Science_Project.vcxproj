@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="CA_Main.cpp" />
     <ClCompile Include="Graphics.cpp" />
+    <ClCompile Include="LogInWindow.cpp" />
     <ClCompile Include="MainWindow.cpp" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="pch.cpp">
@@ -38,6 +39,7 @@
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="CA_pch.h" />
     <ClInclude Include="Graphics.h" />
+    <ClInclude Include="LogInWindow.h" />
     <ClInclude Include="MainWindow.h" />
     <ClInclude Include="Network.h" />
     <ClInclude Include="resource.h" />

@@ -1,10 +1,10 @@
 #pragma once
 
-
-#pragma once
-
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
+#include "../Game Coordinator/WinsockHelper.h"
+
 #include <stdio.h>
 
 #include <iostream>

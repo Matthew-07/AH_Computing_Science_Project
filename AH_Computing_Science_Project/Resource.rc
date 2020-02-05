@@ -114,6 +114,7 @@ STRINGTABLE
 BEGIN
     IDS_MAINWINDOWNAME      "AHGAMEMAINWINDOW"
     IDS_APPNAME             "Reflex Game"
+    IDS_LOGINWINDOWNAME     "AHGAMELOGINWINDOW"
 END
 
 #endif    // English (United Kingdom) resources

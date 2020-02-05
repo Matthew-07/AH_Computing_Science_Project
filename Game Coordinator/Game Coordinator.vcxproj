@@ -175,10 +175,18 @@
     <ClInclude Include="GC_pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="checkLogIn.sql" />
-    <None Include="checkUsername.sql" />
-    <None Include="createAccount.sql" />
-    <None Include="createTable.sql" />
+    <CopyFileToFolders Include="checkLogIn.sql">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="checkUsername.sql">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="createAccount.sql">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="createTable.sql">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

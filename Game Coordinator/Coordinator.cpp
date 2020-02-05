@@ -1,4 +1,5 @@
 #include "Coordinator.h"
+#include "Database.h"
 
 bool Coordinator::run()
 {
@@ -6,8 +7,14 @@ bool Coordinator::run()
 	m_serverConnectionsThread = new std::thread([&]() {gameServerConnectionsThread(); });
 
 	m_userConnectionsThread->join();
+
 	m_serverConnectionsThread->join();
 	return true;
+}
+
+Coordinator::Coordinator(Database* db)
+{
+	m_db = db;
 }
 
 bool Coordinator::init()
@@ -176,6 +183,29 @@ bool Coordinator::userThread(LPVOID lParam)
 
 	SOCKET userSocket = (SOCKET)lParam;
 
+	char recvBuff[66];
+	recieveData(userSocket, recvBuff, 66);
+
+	std::string logInAttempt(recvBuff);
+	std::string username = logInAttempt.substr(1, 32);
+	std::string password = logInAttempt.substr(33, 32);
+
+	int32_t *userId = new int32_t[1];
+
+	// Create Account
+	if (logInAttempt[0] == 'Y') {
+		*userId = m_db->addUser(username, password);
+	}
+	// Else log in to existing account
+	else {
+		*userId = m_db->logIn(username, password);
+	}
+
+	//std::string msg("123");
+	//char sendBuff[9];
+	//strcpy_s(sendBuff, _countof(sendBuff), msg.c_str());
+	sendData(userSocket, (char*) userId, sizeof(*userId));
+
 	return false;
 }
 
@@ -192,18 +222,17 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 	SOCKET serverSocket = (SOCKET)lParam;
 
 	// Test
-	const int buffLen = 512;
+	const int buffLen = 32;
 	char recvBuff[buffLen];
 
 	while (true) {
-		int msgSize = recv(serverSocket, recvBuff, buffLen, 0);
-		if (msgSize > 0) {
+		if (recieveData(serverSocket, recvBuff, buffLen)) {
 			std::string str = recvBuff;
-			str.erase(std::find(str.begin(), str.end(), '\3'), str.end());
+			//str.erase(std::find(str.begin(), str.end(), '\3'), str.end());
 
 			std::cout << "Message Recieved: " << str << std::endl << std::endl;
 		}
-		else if (msgSize == SOCKET_ERROR) {
+		else {
 			std::cout << "Connection lost" << std::endl;
 			closesocket(serverSocket);
 			return false;

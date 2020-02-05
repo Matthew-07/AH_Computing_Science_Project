@@ -8,6 +8,7 @@
 #define IDI_ICON1                       105
 #define IDI_MAINICONSMALL               105
 #define IDD_DIALOG1                     106
+#define IDS_LOGINWINDOWNAME             106
 #define IDC_SCROLLBAR1                  1002
 
 // Next default values for new objects

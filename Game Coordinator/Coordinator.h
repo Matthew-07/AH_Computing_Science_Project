@@ -2,8 +2,12 @@
 
 #include "GC_pch.h"
 
+class Database;
+
 class Coordinator {
 public:
+	Coordinator(Database* db);
+
 	bool init(); // Initalize winsock
 	bool startServer(); // Prepare game coordinator
 	bool run(); // Run the game coordinator
@@ -25,4 +29,6 @@ private:
 	std::thread*				m_serverConnectionsThread;
 	std::vector<std::thread>	m_userThreads;
 	std::vector<std::thread>	m_serverThreads;
+
+	Database *m_db = NULL;
 };

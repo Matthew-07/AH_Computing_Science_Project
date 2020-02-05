@@ -16,7 +16,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 
 	// Initate Graphics
-	Graphics myGraphics = Graphics();
+	Graphics myGraphics = Graphics(&network);
 
 	if (!myGraphics.init(hInstance, nCmdShow)) {
 		return -1;

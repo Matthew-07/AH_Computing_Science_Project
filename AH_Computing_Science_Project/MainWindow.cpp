@@ -22,7 +22,12 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_SIZE:
 		GetClientRect(m_hwnd, &m_rect);
 		discardGraphicResources();
-		InvalidateRect(m_hwnd, NULL, TRUE);		
+		InvalidateRect(m_hwnd, NULL, TRUE);
+
+		if (m_logInHandle != NULL) {
+			MoveWindow(m_logInHandle, m_rect.right / 2 - 256, 32 , 512, m_rect.bottom - 64, true);
+		}
+
 		break;
 	case WM_PAINT:
 		onPaint();
@@ -30,6 +35,12 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
+	case WM_GETMINMAXINFO:
+	{
+		LPMINMAXINFO lpMMI = (LPMINMAXINFO)lParam;
+		lpMMI->ptMinTrackSize.x = 624;
+		lpMMI->ptMinTrackSize.y = 736;
+	}
 	}
 
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
@@ -42,9 +53,9 @@ void MainWindow::onPaint() {
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(m_hwnd, &ps);
 
-	pRenderTarget->BeginDraw();	
+	pRenderTarget->BeginDraw();
 
-	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(0.95f,0.95f,0.98f)));
+	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(0.97f,0.97f,0.98f)));
 
 	// Draw Window
 

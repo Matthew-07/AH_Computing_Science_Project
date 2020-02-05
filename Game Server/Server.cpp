@@ -28,7 +28,6 @@ bool Server::init() {
 
 bool Server::start()
 {
-	WSADATA wsaData;	
 	int iResult;
 
 	struct addrinfo* result = NULL,
@@ -81,14 +80,19 @@ bool Server::start()
 	}
 
 
-	std::string maxGamesText = MAXGAMESMSG + '\3';
-	const char* sendBuff = maxGamesText.c_str();
-	int bytes = send(ConnectSocket, sendBuff, (int)strlen(sendBuff), 0);
+	//std::string maxGamesText = MAXGAMESMSG + '\3';
+	const int BUFFER_LENGTH = 512;
+	char sendBuff[BUFFER_LENGTH];
+	strcpy_s(sendBuff, BUFFER_LENGTH,MAXGAMESMSG.c_str());
+	//sendBuff = MAXGAMESMSG.c_str();
+	if (!sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff))) {
+		return false;
+	}
 
-	std::cout << "Sent " << bytes << " bytes." << std::endl;
+	std::cout << "Sent " << (int)strlen(sendBuff) << " bytes." << std::endl;
 	
-	sendBuff = "I am a server";
-	send(ConnectSocket, sendBuff, (int)strlen(sendBuff), 0);
+	strcpy_s(sendBuff, BUFFER_LENGTH,"I am a server\n");
+	sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff));
 	while (true) {
 		std::string sendStr;
 		std::cout << "Message: ";
@@ -97,39 +101,21 @@ bool Server::start()
 		std::cin.getline(inputBuffer, 512);
 
 		sendStr = inputBuffer;
-		sendStr += '\3';
+		sendStr += '\n';
 
-		sendBuff = sendStr.c_str();
+		strcpy_s(sendBuff, BUFFER_LENGTH,sendStr.c_str());
 
-		bytes = send(ConnectSocket, sendBuff, (int)strlen(sendBuff), 0);
-
-		if (bytes == SOCKET_ERROR) {
+		
+		if (!sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff))) {
 			break;
 		}
+		
 
-		std::cout << "Sent " << bytes << " bytes." << std::endl;
+		std::cout << "Sent " << (int)strlen(sendBuff) << " bytes." << std::endl;
 		std::cout << WSAGetLastError << std::endl;
 	}
 
 	std::cout << "Connection Lost.";
-
-	return true;
-}
-
-bool Server::senddata(SOCKET sock, void* buf, int buflen)
-{
-	char* pbuf = (char*)buf;
-
-	while (buflen > 0)
-	{
-		int num = send(sock, pbuf, buflen, 0);
-		if (num == SOCKET_ERROR){
-			return false;
-		}
-
-		pbuf += num;
-		buflen -= num;
-	}
 
 	return true;
 }
