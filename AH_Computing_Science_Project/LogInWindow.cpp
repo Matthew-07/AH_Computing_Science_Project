@@ -6,23 +6,52 @@ PCWSTR LogInWindow::ClassName() const
 	return (PCWSTR)m_className;
 }
 
-LogInWindow::LogInWindow(Graphics* graphics, Network* nw){
+LogInWindow::LogInWindow(Graphics* graphics, Network* nw, HWND parentHandle) : bBlack(NULL), m_loginButton(NULL), m_usernameEdit(NULL), m_passwordEdit(NULL) {
 	LoadStringW(m_inst, IDS_LOGINWINDOWNAME, m_className, MAX_LOADSTRING);
+
+	m_parentHwnd = parentHandle;
 
 	myGraphics = graphics;
 	network = nw;
 	m_rect = RECT();
+
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24.0f,
+		L"en-uk",
+		&pLoginTextFormat
+	);
+
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		36.0f,
+		L"en-uk",
+		&pHeadingTextFormat
+	);
+	pHeadingTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 }
 
 LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
 	case WM_CREATE:
-		m_usernameEdit = CreateWindowEx(NULL, L"EDIT", L"<Enter Username>", WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER, 16, 16, 256, 24, Window(), NULL, m_inst, NULL);
+		m_usernameEdit = CreateWindowEx(NULL, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER, 16, 156, 480, 32, Window(), NULL, m_inst, NULL);
 		PostMessage(m_usernameEdit, EM_LIMITTEXT, (WPARAM) 32, NULL); // Set max length to 32
-		m_passwordEdit = CreateWindowEx(NULL, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER | ES_PASSWORD, 16, 56, 256, 24, Window(), NULL, m_inst, NULL);
+		m_passwordEdit = CreateWindowEx(NULL, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER | ES_PASSWORD, 16, 244, 480, 32, Window(), NULL, m_inst, NULL);
 		PostMessage(m_passwordEdit, EM_LIMITTEXT, (WPARAM)32, NULL); // Set max length to 32
-		m_loginButton = CreateWindowEx(NULL, L"BUTTON", L"Login", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON, 16, 96, 256, 24, Window(), NULL, m_inst, NULL);
+		m_confirmEdit = CreateWindowEx(NULL, L"EDIT", L"", WS_CHILD | WS_TABSTOP | WS_BORDER | ES_PASSWORD, 16, 332, 480, 32, Window(), NULL, m_inst, NULL);
+		PostMessage(m_confirmEdit, EM_LIMITTEXT, (WPARAM)32, NULL); // Set max length to 32
+		m_switchModeButton = CreateWindowEx(NULL, L"BUTTON", L"I don't have an account.", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON, 16, 380, 224, 32, Window(), NULL, m_inst, NULL);
+		m_loginButton = CreateWindowEx(NULL, L"BUTTON", L"Login", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON, 272, 380, 224, 32, Window(), NULL, m_inst, NULL);
+		
 		break;
 	case WM_SIZE:
 		GetClientRect(m_hwnd, &m_rect);
@@ -32,31 +61,90 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		onPaint();
 		break;
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
 	case WM_COMMAND:
 		switch (HIWORD(wParam)) {
 		case BN_CLICKED:
 			if ((HWND)lParam == m_loginButton) {
 				int usernameLength = GetWindowTextLength(m_usernameEdit) + 1;
 				if (usernameLength < 4) break;
-				CHAR* username = new CHAR[usernameLength];
+				CHAR* username = new CHAR[usernameLength];				
 
 				int passwordLength = GetWindowTextLength(m_passwordEdit) + 1;
-				CHAR* password = new CHAR[passwordLength];
 				if (passwordLength < 8) break;
+				CHAR* password = new CHAR[passwordLength];
 
 				GetWindowTextA(m_usernameEdit, username, usernameLength);
+				std::string usernameStr(username);
+
 				GetWindowTextA(m_passwordEdit, password, passwordLength);
-				int id = network->logIn(false, std::string(username), std::string(password));
+				std::string passwordStr(password);
+
+				int id;
+
+				if (newAccountMode) {
+					/* Same as when false but there will be two password edits which must be equal to eachother
+					and the first parameter of network->LogIn(...) will be true.*/
+					int confirmLength = GetWindowTextLength(m_confirmEdit) + 1;
+					if (confirmLength < 8) break;
+					CHAR* confirm = new CHAR[passwordLength];
+
+					GetWindowTextA(m_confirmEdit, confirm, confirmLength);
+					std::string confirmStr(confirm);
+
+					if (passwordStr != confirmStr) break;
+					delete[] confirm;
+
+					id = network->logIn(true, usernameStr, passwordStr);
+				}
+				else {
+					id = network->logIn(false, usernameStr, passwordStr);
+				}
 
 				OutputDebugStringA(std::to_string(id).c_str());
 				OutputDebugStringA("\n");
 
 				delete[] username, password;
-				break;
+
+				if (id > 0) {
+					// Login successful
+					SendMessage(m_parentHwnd, CA_SHOWMAIN, SW_SHOW, NULL);
+					ShowWindow(Window(), SW_HIDE);					
+				}
+
 			}
+			else if ((HWND)lParam == m_switchModeButton) {
+				if (newAccountMode) {
+					ShowWindow(m_confirmEdit, SW_HIDE);
+					// Clear control text
+					textChangedByProgram = true;
+					SetWindowText(m_usernameEdit,L"");
+					SetWindowText(m_passwordEdit, L"");
+
+					SetWindowText(m_switchModeButton, L"I don't have an account.");
+					SetWindowText(m_loginButton, L"Login");
+					textChangedByProgram = false;
+
+					newAccountMode = false;
+					InvalidateRect(m_hwnd, NULL, false);
+				}
+				else {
+					ShowWindow(m_confirmEdit, SW_SHOW);
+					newAccountMode = true;
+
+					// Clear control text
+					textChangedByProgram = true;
+					SetWindowText(m_usernameEdit, L"");
+					SetWindowText(m_passwordEdit, L"");
+					SetWindowText(m_confirmEdit, L"");
+
+					SetWindowText(m_switchModeButton, L"I already have an account.");
+					SetWindowText(m_loginButton, L"Create Account");
+					textChangedByProgram = false;
+					InvalidateRect(m_hwnd, NULL, false);
+				}
+			}
+			break;
+
 		case EN_UPDATE:
 			if (!textChangedByProgram) {
 				int length = GetWindowTextLengthA((HWND)lParam) + 1;
@@ -82,7 +170,8 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				PostMessageA((HWND)lParam, EM_SETSEL, (WPARAM)pos, (LPARAM)pos + 1);
 				break;
 			}
-		}	
+		}
+		break;
 	}
 
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
@@ -101,6 +190,51 @@ void LogInWindow::onPaint() {
 
 	// Draw Window
 	pRenderTarget->DrawRectangle(D2D1::RectF(m_rect.left,m_rect.top,m_rect.right,m_rect.bottom),bBlack);
+
+	pRenderTarget->DrawTextW(
+		L"Username: ",
+		(UINT32) 10,
+		pLoginTextFormat,
+		D2D1::RectF(16.0f,116.0f,480.0f,116.0f),
+		bBlack
+	);
+
+	pRenderTarget->DrawTextW(
+		L"Password: ",
+		(UINT32)10,
+		pLoginTextFormat,
+		D2D1::RectF(16.0f, 204.0f, 480.0f, 204.0f),
+		bBlack
+	);
+
+	const wchar_t* headerText;
+	int length;
+
+	if (newAccountMode) {
+		pRenderTarget->DrawTextW(
+			L"Confirm Password: ",
+			(UINT32)19,
+			pLoginTextFormat,
+			D2D1::RectF(16.0f, 292.0f, 480.0f, 292.0f),
+			bBlack
+		);
+
+		headerText = L"Create Account";
+		length = 14;
+	}
+	else
+	{
+		headerText = L"Login";
+		length = 5;
+	}
+
+	pRenderTarget->DrawTextW(
+		headerText,
+		(UINT32)length,
+		pHeadingTextFormat,
+		D2D1::RectF(16.0f, 16.0f, 496.0f, 16.0f),
+		bBlack
+	);
 
 
 	//End Draw
@@ -133,4 +267,5 @@ void LogInWindow::createGraphicResources()
 void LogInWindow::discardGraphicResources()
 {
 	SafeRelease(&pRenderTarget);
+	SafeRelease(&bBlack);
 }

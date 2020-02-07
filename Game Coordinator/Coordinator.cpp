@@ -167,45 +167,65 @@ bool Coordinator::userThread(LPVOID lParam)
 
 	*/
 
-	/*
-	while (login not successful){
-		getAttemptFromUser()
-		checkIfUsernameExists()
-		checkIfPasswordCorrect()
-		checkIfUserNotAlreadyLoggedIn()
-		sendMessageToUser()
+	SOCKET userSocket = (SOCKET)lParam;	
+
+	while (true) {
+		char recvBuff[66];
+
+		if (!recieveData(userSocket, recvBuff, 66)) {
+			// Connection lost
+			closesocket(userSocket);
+			return false;
+		}
+
+		std::string logInAttempt(recvBuff);
+
+		std::string username = logInAttempt.substr(1, 32);
+		long long clip = username.find_first_of('#');
+		username = username.substr(0, clip);
+
+		std::string password = logInAttempt.substr(33, 32);
+		clip = password.find_first_of('#');
+		password = password.substr(0, clip);
+
+		int32_t* userId = new int32_t[1];
+
+		// Create Account
+		if (logInAttempt[0] == 'Y') {
+			*userId = m_db->addUser(username, password);
+		}
+		// Else log in to existing account
+		else {
+			*userId = m_db->logIn(username, password);
+		}
+
+		//std::string msg("123");
+		//char sendBuff[9];
+		//strcpy_s(sendBuff, _countof(sendBuff), msg.c_str());
+		sendData(userSocket, (char*)userId, sizeof(*userId));
+
+		if (*userId > 0) {
+			break;
+		}
 	}
-	while (userConnected)
-	{
-		waitForCommands()
+	
+	// send profile information
+	// -----------------
+
+	// Wait for commands
+#define clientCommandSize 8
+	while (true) {
+		char recieveBuffer[clientCommandSize]; // decide size later
+		if (!recieveData(userSocket, recieveBuffer, clientCommandSize))
+		{
+			// Connection lost
+			closesocket(userSocket);
+			return false;
+		}
+		// Respond to command
 	}
-	*/
-
-	SOCKET userSocket = (SOCKET)lParam;
-
-	char recvBuff[66];
-	recieveData(userSocket, recvBuff, 66);
-
-	std::string logInAttempt(recvBuff);
-	std::string username = logInAttempt.substr(1, 32);
-	std::string password = logInAttempt.substr(33, 32);
-
-	int32_t *userId = new int32_t[1];
-
-	// Create Account
-	if (logInAttempt[0] == 'Y') {
-		*userId = m_db->addUser(username, password);
-	}
-	// Else log in to existing account
-	else {
-		*userId = m_db->logIn(username, password);
-	}
-
-	//std::string msg("123");
-	//char sendBuff[9];
-	//strcpy_s(sendBuff, _countof(sendBuff), msg.c_str());
-	sendData(userSocket, (char*) userId, sizeof(*userId));
-
+	   
+	closesocket(userSocket);
 	return false;
 }
 

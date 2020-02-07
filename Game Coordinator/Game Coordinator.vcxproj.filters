@@ -46,17 +46,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="createTable.sql">
-      <Filter>SQL</Filter>
-    </None>
-    <None Include="checkLogIn.sql">
-      <Filter>SQL</Filter>
-    </None>
-    <None Include="createAccount.sql">
-      <Filter>SQL</Filter>
-    </None>
-    <None Include="checkUsername.sql">
-      <Filter>SQL</Filter>
-    </None>
+    <CopyFileToFolders Include="checkLogIn.sql" />
+    <CopyFileToFolders Include="checkUsername.sql" />
+    <CopyFileToFolders Include="createAccount.sql" />
+    <CopyFileToFolders Include="createTable.sql" />
   </ItemGroup>
 </Project>

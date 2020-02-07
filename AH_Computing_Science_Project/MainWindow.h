@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BaseWindow.h"
+#include "CustomMessages.h"
 
 // Tell compiler "Graphics" class exists
 class Graphics;
@@ -23,10 +24,14 @@ private:
 	void discardGraphicResources();
 
 	ID2D1HwndRenderTarget *pRenderTarget;
-	//ID2D1SolidColorBrush *pBackgroundBrush;
+	ID2D1SolidColorBrush *bBlack;
+	IDWriteTextFormat *pTitleTextFormat;
 
 	RECT m_rect;
 
 	Graphics *myGraphics = NULL;
+	bool windowShown = false;
+
+	HWND m_findGameButton, m_settingsButton, m_exitButton;
 };
 

@@ -16,6 +16,7 @@ public:
 	bool init(HINSTANCE instance, int nCmdShow);
 
 	ID2D1Factory * getFactory() { return pFactory; }
+	IDWriteFactory* getWriteFactory() { return pWriteFactory; }
 
 private:
 	Network* network = NULL;
@@ -30,4 +31,5 @@ private:
 	WCHAR m_appName[MAX_LOADSTRING];
 
 	ID2D1Factory* pFactory;
+	IDWriteFactory* pWriteFactory;	
 };

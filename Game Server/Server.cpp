@@ -40,7 +40,7 @@ bool Server::start()
 	hints.ai_protocol = IPPROTO_TCP;
 
 	// Resolve the server address and port
-	iResult = getaddrinfo("DESKTOP-BJ9V93R", "56534", &hints, &result);
+	iResult = getaddrinfo("DESKTOP-BJ9V93R", COORDINATOR_PORT, &hints, &result);
 	if (iResult != 0) {
 		printf("getaddrinfo failed with error: %d\n", iResult);
 		WSACleanup();

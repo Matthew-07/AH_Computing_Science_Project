@@ -57,7 +57,7 @@ int Database::addUser(std::string username, std::string password)
 {
 	char buff[512]; // Buffer must be large enough to hold entire query
 
-	sprintf_s(buff, q_checkUsername.c_str(), username);
+	sprintf_s(buff, q_checkUsername.c_str(), username.c_str());
 
 	char* err = NULL;
 	bool foundRows = false;
@@ -74,7 +74,7 @@ int Database::addUser(std::string username, std::string password)
 		return -1;
 	}
 
-	sprintf_s(buff, q_createAccount.c_str(), username, password);
+	sprintf_s(buff, q_createAccount.c_str(), username.c_str(), password.c_str());
 
 	sqlite3_exec(db, buff, NULL, NULL, &err);
 	if (err != NULL) {
@@ -91,8 +91,8 @@ int Database::addUser(std::string username, std::string password)
 int Database::logIn(std::string username, std::string password) {
 	char buff[512]; // Buffer must be large enough to hold entire query
 
-	sprintf_s(buff, q_checkLogIn.c_str(), username, password);
-
+	sprintf_s(buff, q_checkLogIn.c_str(), username.c_str(), password.c_str());
+	
 	char* err = NULL;
 	int userId = -2;
 

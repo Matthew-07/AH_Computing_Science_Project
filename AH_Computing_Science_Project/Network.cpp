@@ -6,7 +6,7 @@ bool Network::init() {
 	// Initialize Winsock
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0) {
-		printf("WSAStartup failed: %d\n", iResult);
+		MessageBoxA(NULL, "Failed to connect to server.", "Error", NULL);
 		return false;
 	}
 
@@ -27,7 +27,7 @@ bool Network::init() {
 		sprintf_s(buff,_countof(buff),err.c_str(), iResult);
 		MessageBoxA(NULL, buff, "Error", NULL);
 		WSACleanup();
-		return 1;
+		return false;
 	}
 
 	m_GCSocket = INVALID_SOCKET;
@@ -39,9 +39,10 @@ bool Network::init() {
 		m_GCSocket = socket(ptr->ai_family, ptr->ai_socktype,
 			ptr->ai_protocol);
 		if (m_GCSocket == INVALID_SOCKET) {
-			printf("socket failed with error: %ld\n", WSAGetLastError());
+			//printf("socket failed with error: %ld\n", WSAGetLastError());
+			MessageBoxA(NULL, "Failed to connect to server.", "Error", NULL);
 			WSACleanup();
-			return 1;
+			return false;
 		}
 
 		// Connect to server.
@@ -57,9 +58,9 @@ bool Network::init() {
 	freeaddrinfo(result);
 
 	if (m_GCSocket == INVALID_SOCKET) {
-		OutputDebugStringA("Unable to connect to server!\n");
+		MessageBoxA(NULL, "Failed to connect to server.", "Error", NULL);;
 		WSACleanup();
-		return 1;
+		return false;
 	}
 
 	return true;
@@ -92,7 +93,10 @@ int Network::logIn(bool newAccount, std::string username, std::string password)
 
 	OutputDebugStringA(std::to_string(*returnBuffer).c_str());
 	OutputDebugStringA("\n");
+
+	int id = *returnBuffer;
+	delete returnBuffer;
 		
-	return 0;
+	return id;
 }
 

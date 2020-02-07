@@ -38,6 +38,7 @@
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="CA_pch.h" />
+    <ClInclude Include="CustomMessages.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="LogInWindow.h" />
     <ClInclude Include="MainWindow.h" />

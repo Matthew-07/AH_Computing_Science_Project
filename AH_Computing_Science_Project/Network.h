@@ -2,7 +2,7 @@
 
 #include "CA_pch.h"
 
-#define COORDINATOR_PORT "56535"
+#define COORDINATOR_PORT "26535"
 
 class Network
 {

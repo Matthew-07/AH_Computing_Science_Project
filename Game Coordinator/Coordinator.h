@@ -18,8 +18,8 @@ private:
 	bool userThread(LPVOID clientSocket); // Thread for handling an individual client
 	bool gameServerThread(LPVOID serverSocket); // Thread for handling an individual game server
 
-#define GAMESERVER_PORT "56534"
-#define USER_PORT "56535"
+#define GAMESERVER_PORT "26534"
+#define USER_PORT "26535"
 	//const char* HOSTNAME = "mae_ahcompsci_gc";
 
 	SOCKET m_UserListenSocket;

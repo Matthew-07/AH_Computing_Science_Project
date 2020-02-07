@@ -12,12 +12,27 @@ MainWindow::MainWindow(Graphics * graphics) : pRenderTarget(NULL)
 
 	myGraphics = graphics;
 	m_rect = RECT();
+
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		48.0f,
+		L"en-uk",
+		&pTitleTextFormat
+	);
+	pTitleTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 }
 
 LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
 	case WM_CREATE:
+		m_findGameButton = CreateWindowEx(NULL, L"BUTTON", L"Find Game", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 32, 256, 224, 32, Window(), NULL, m_inst, NULL);
+		m_settingsButton = CreateWindowEx(NULL, L"BUTTON", L"Settings", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 32, 320, 224, 32, Window(), NULL, m_inst, NULL);
+		m_exitButton = CreateWindowEx(NULL, L"BUTTON", L"Quit to Desktop", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 32, 384, 224, 32, Window(), NULL, m_inst, NULL);
 		break;
 	case WM_SIZE:
 		GetClientRect(m_hwnd, &m_rect);
@@ -31,6 +46,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_PAINT:
 		onPaint();
+		InvalidateRect(m_logInHandle, NULL, false);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -41,6 +57,29 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		lpMMI->ptMinTrackSize.x = 624;
 		lpMMI->ptMinTrackSize.y = 736;
 	}
+	case CA_SHOWMAIN:
+		ShowWindow(m_findGameButton, wParam);
+		ShowWindow(m_settingsButton, wParam);
+		ShowWindow(m_exitButton, wParam);
+
+		if (wParam == SW_SHOW) {
+			windowShown = true;
+		}
+		else {
+			windowShown = false;
+		}
+		break;
+
+	case WM_COMMAND:
+		switch (HIWORD(wParam)) {
+		case BN_CLICKED:
+			if ((HWND)lParam == m_exitButton) {
+				PostQuitMessage(0);
+				break;
+			}
+			break;
+		}
+		break;
 	}
 
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
@@ -58,7 +97,13 @@ void MainWindow::onPaint() {
 	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(0.97f,0.97f,0.98f)));
 
 	// Draw Window
-
+	pRenderTarget->DrawTextW(
+		L"Reflex",
+		(UINT32)6,
+		pTitleTextFormat,
+		D2D1::RectF(32.0f, 32.0f, m_rect.right - 32.0f, 32.0f),
+		bBlack
+	);
 
 
 	//End Draw
@@ -79,7 +124,7 @@ void MainWindow::createGraphicResources()
 			D2D1::HwndRenderTargetProperties(m_hwnd, size),
 			&pRenderTarget);
 
-		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::LightGray), &pBackgroundBrush);
+		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &bBlack);
 		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &pBombBrush);
 		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(1.0f, 0.0f, 0.0f, 0.2f), &pExplosionBrush);
 		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Green), &pFoodBrush);
@@ -91,4 +136,5 @@ void MainWindow::createGraphicResources()
 void MainWindow::discardGraphicResources()
 {
 	SafeRelease(&pRenderTarget);
+	SafeRelease(&bBlack);
 }
