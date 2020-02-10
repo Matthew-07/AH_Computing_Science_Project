@@ -38,7 +38,7 @@ bool Graphics::init(HINSTANCE instance, int nCmdShow) {
 }
 
 bool Graphics::createMainWindow(int nCmdShow) {
-	w_main = new MainWindow(this);
+	w_main = new MainWindow(this, network);
 	
 	if (!w_main->Create(L"Reflex", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN)) {
 

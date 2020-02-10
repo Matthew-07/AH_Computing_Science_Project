@@ -13,6 +13,8 @@
 #include <vector>
 #include <thread>
 
+#include <list>
+
 #pragma comment(lib, "Ws2_32.lib")
 
 #include <winsqlite/winsqlite3.h>

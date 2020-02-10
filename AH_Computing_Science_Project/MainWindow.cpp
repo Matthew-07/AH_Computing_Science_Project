@@ -1,16 +1,18 @@
 #include "MainWindow.h"
 #include "Graphics.h"
+#include "Network.h"
 
 PCWSTR MainWindow::ClassName() const
 {
 	return (PCWSTR) m_className;
 }
 
-MainWindow::MainWindow(Graphics * graphics) : pRenderTarget(NULL)
+MainWindow::MainWindow(Graphics * graphics, Network * nw) : pRenderTarget(NULL)
 {
 	LoadStringW(m_inst, IDS_MAINWINDOWNAME, m_className, MAX_LOADSTRING);
 
 	myGraphics = graphics;
+	network = nw;
 	m_rect = RECT();
 
 	myGraphics->getWriteFactory()->CreateTextFormat(
@@ -76,6 +78,9 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if ((HWND)lParam == m_exitButton) {
 				PostQuitMessage(0);
 				break;
+			}
+			else if ((HWND)lParam == m_findGameButton) {
+				network->joinMatchmakingQueue();
 			}
 			break;
 		}

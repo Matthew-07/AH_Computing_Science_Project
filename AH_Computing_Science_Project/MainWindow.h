@@ -3,14 +3,15 @@
 #include "BaseWindow.h"
 #include "CustomMessages.h"
 
-// Tell compiler "Graphics" class exists
+// Tell compiler that classes exist
 class Graphics;
+class Network;
 
 class MainWindow:
 	public BaseWindow<MainWindow>
 {
 public:
-	MainWindow(Graphics * graphics);
+	MainWindow(Graphics * graphics, Network* nw);
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	void SetLogInHandle(HWND hWnd) { m_logInHandle = hWnd; }
 private:
@@ -30,6 +31,7 @@ private:
 	RECT m_rect;
 
 	Graphics *myGraphics = NULL;
+	Network* network = NULL;
 	bool windowShown = false;
 
 	HWND m_findGameButton, m_settingsButton, m_exitButton;

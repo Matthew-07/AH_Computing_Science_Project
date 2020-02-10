@@ -35,7 +35,7 @@ bool Coordinator::startServer()
 	struct addrinfo* result = NULL, * ptr = NULL, hints;
 
 	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET;
+	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
@@ -74,6 +74,8 @@ bool Coordinator::startServer()
 	freeaddrinfo(result);
 
 	// Game Server Socket
+
+	// None of the settings stored by the addrinfo object need to be changed
 
 	// Resolve the local address and port to be used by the server
 	iResult = getaddrinfo(NULL, GAMESERVER_PORT, &hints, &result);
@@ -169,6 +171,8 @@ bool Coordinator::userThread(LPVOID lParam)
 
 	SOCKET userSocket = (SOCKET)lParam;	
 
+	int32_t* userId = new int32_t[1];
+
 	while (true) {
 		char recvBuff[66];
 
@@ -187,8 +191,6 @@ bool Coordinator::userThread(LPVOID lParam)
 		std::string password = logInAttempt.substr(33, 32);
 		clip = password.find_first_of('#');
 		password = password.substr(0, clip);
-
-		int32_t* userId = new int32_t[1];
 
 		// Create Account
 		if (logInAttempt[0] == 'Y') {
@@ -213,16 +215,52 @@ bool Coordinator::userThread(LPVOID lParam)
 	// -----------------
 
 	// Wait for commands
-#define clientCommandSize 8
+
 	while (true) {
-		char recieveBuffer[clientCommandSize]; // decide size later
-		if (!recieveData(userSocket, recieveBuffer, clientCommandSize))
+		int32_t* int32Buff = new int32_t; // decide size later
+		if (!recieveData(userSocket, (char*) int32Buff, 4))
 		{
 			// Connection lost
 			closesocket(userSocket);
 			return false;
 		}
 		// Respond to command
+		switch (*int32Buff) {
+		case JOIN_QUEUE:
+		{
+			*int32Buff = m_serverIPs.size();
+			sendData(userSocket, (char*)int32Buff, sizeof(*int32Buff));
+			in6_addr* addrBuff = new in6_addr[*int32Buff];
+			for (auto ip : m_serverIPs) {
+				memcpy(addrBuff, ip, sizeof(in6_addr));
+				addrBuff++;
+			}
+			addrBuff -= *int32Buff;
+			sendData(userSocket, (char*)addrBuff, (*int32Buff) * sizeof(in6_addr));
+
+			int64_t* pingBuff = new int64_t[*int32Buff];
+			recieveData(userSocket, (char*)pingBuff, (*int32Buff) * sizeof(pingBuff[0]));
+
+			Player p;
+			p.id = *userId;
+			p.playerSocket = &userSocket;
+			for (int a = 0; a < *int32Buff; a++) {
+				p.addConnection(addrBuff[a],pingBuff[a]);
+				std::cout << addrBuff[a].u.Byte << "\t";
+				for (int i = 0; i < 7; i++) {
+					std::cout << addrBuff[a].u.Word[i] << ".";
+				}
+				std::cout << addrBuff[a].u.Word[7] << "\t";
+				std::cout << pingBuff[a] << "\n";
+			}
+
+			break;
+		}
+		case LEAVE_QUEUE:
+			break;
+
+
+		}
 	}
 	   
 	closesocket(userSocket);
@@ -245,6 +283,12 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 	const int buffLen = 32;
 	char recvBuff[buffLen];
 
+	sockaddr_in6 s;
+	int nameSize = sizeof(s);
+	getpeername(serverSocket, (sockaddr*) &s, &nameSize);
+
+	m_serverIPs.push_back(&s.sin6_addr);
+
 	while (true) {
 		if (recieveData(serverSocket, recvBuff, buffLen)) {
 			std::string str = recvBuff;
@@ -255,7 +299,23 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 		else {
 			std::cout << "Connection lost" << std::endl;
 			closesocket(serverSocket);
+
+			std::list<in6_addr*>::iterator it;
+			for (it = m_serverIPs.begin(); it != m_serverIPs.end(); it++) {
+				if (*it == &s.sin6_addr) {
+					m_serverIPs.erase(it);
+					break;
+				}
+			}
 			return false;
 		}
 	}
+	std::list<in6_addr*>::iterator it;
+	for (it = m_serverIPs.begin(); it != m_serverIPs.end(); it++) {
+		if (*it == &s.sin6_addr) {
+			m_serverIPs.erase(it);
+			break;
+		}
+	}
+	return true;
 }

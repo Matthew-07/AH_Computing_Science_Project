@@ -1,8 +1,6 @@
 #include "Server.h"
 
 bool Server::init() {
-	WSADATA wsaData;
-
 	// Initialize Winsock
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0) {
@@ -10,19 +8,15 @@ bool Server::init() {
 		return false;
 	}
 
-	// Read settings
-	std::string text;
-	std::fstream f("serverconfig.txt",std::ios::in);
-	if (f.is_open()) {
-		getline(f, text);
-		MAXGAMES = stoi(text);
-		MAXGAMESMSG = text;
-	} else {
-		f = std::fstream("serverconfig.txt", std::ios::out);
-		f << 8;
-		MAXGAMES = 8;
-		MAXGAMESMSG = "8";
-	}
+	//// Read settings
+	//std::string text;
+	//std::fstream f("serverconfig.txt",std::ios::in);
+	//if (f.is_open()) {
+	//	getline(f, text);
+	//	m_ip = (text);
+	//} else {
+	//	return false;
+	//}
 	return true;
 }
 
@@ -79,11 +73,13 @@ bool Server::start()
 		return 1;
 	}
 
+	m_recievePacketsThread = new std::thread([&]() {recievePackets(); });
+
 
 	//std::string maxGamesText = MAXGAMESMSG + '\3';
 	const int BUFFER_LENGTH = 512;
 	char sendBuff[BUFFER_LENGTH];
-	strcpy_s(sendBuff, BUFFER_LENGTH,MAXGAMESMSG.c_str());
+	strcpy_s(sendBuff, BUFFER_LENGTH,"TEST");
 	//sendBuff = MAXGAMESMSG.c_str();
 	if (!sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff))) {
 		return false;
@@ -94,28 +90,104 @@ bool Server::start()
 	strcpy_s(sendBuff, BUFFER_LENGTH,"I am a server\n");
 	sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff));
 	while (true) {
-		std::string sendStr;
-		std::cout << "Message: ";
+		Sleep(10000);
+		//std::string sendStr;
+		//std::cout << "Message: ";
 
-		char inputBuffer[512];
-		std::cin.getline(inputBuffer, 512);
+		//char inputBuffer[512];
+		////std::cin.getline(inputBuffer, 512);
 
-		sendStr = inputBuffer;
-		sendStr += '\n';
+		////sendStr = inputBuffer;
+		//sendStr = "Beep!\n";
 
-		strcpy_s(sendBuff, BUFFER_LENGTH,sendStr.c_str());
+		//strcpy_s(sendBuff, BUFFER_LENGTH,sendStr.c_str());
 
-		
-		if (!sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff))) {
-			break;
-		}
-		
+		//
+		//if (!sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff))) {
+		//	break;
+		//}
+		//
 
-		std::cout << "Sent " << (int)strlen(sendBuff) << " bytes." << std::endl;
-		std::cout << WSAGetLastError << std::endl;
+		//std::cout << "Sent " << (int)strlen(sendBuff) << " bytes." << std::endl;
+		//std::cout << WSAGetLastError << std::endl;
 	}
 
 	std::cout << "Connection Lost.";
 
 	return true;
+}
+
+bool Server::recievePackets()
+{
+	SOCKET s;
+	struct sockaddr_in6 server, si_other;
+	//struct addrinfo *result, hints;
+
+	//ZeroMemory(&hints, sizeof(hints));
+	//hints.ai_family = AF_INET6;
+	//hints.ai_socktype = SOCK_DGRAM;
+	//hints.ai_protocol = IPPROTO_UDP;
+	//hints.ai_flags = AI_PASSIVE;
+
+	int slen, recv_len;	
+
+	slen = sizeof(si_other);
+
+	//Create a socket
+	if ((s = socket(AF_INET6, SOCK_DGRAM, 0)) == INVALID_SOCKET)
+	{
+		printf(" Could not create socket : % d ", WSAGetLastError());
+	}
+	printf(" Socket created.\n ");
+
+	//Prepare the sockaddr_in structure
+	//getaddrinfo(NULL, CLIENT_PORT, &hints, &result);
+	memset(&server, 0, sizeof(server));
+	server.sin6_family = AF_INET6;
+	server.sin6_addr = in6addr_any;
+	server.sin6_port = htons(CLIENT_PORT);
+
+	//Bind
+	if (bind(s, (struct sockaddr*) &server, sizeof(server)) == SOCKET_ERROR)
+	//if (bind(s, result->ai_addr, result->ai_addrlen) == SOCKET_ERROR)
+	{
+		printf(" Bind failed with error code : % d ", WSAGetLastError());
+		exit(EXIT_FAILURE);
+	}
+
+	char buf[BUFFER_SIZE];
+	//keep listening for data
+	while (true)
+	{
+		//fflush(stdout);
+
+		//clear the buffer by filling null, it might have previously received data
+		memset(buf, 0, BUFFER_SIZE);
+
+		//try to receive some data, this is a blocking call
+		if ((recv_len = recvfrom(s, buf, BUFFER_SIZE, 0, (struct sockaddr*) &si_other, &slen)) == SOCKET_ERROR)
+		{
+			printf(" recvfrom() failed with error code : % d ", WSAGetLastError());
+			exit(EXIT_FAILURE);
+		}
+
+		//print details of the client/peer and the data received
+		char *buff = new char[32];
+		inet_ntop(AF_INET6, &si_other.sin6_addr, buff, 32);
+		printf(" Received packet from % s: % d\n " , buff, ntohs(si_other.sin6_port));
+		printf(" Data: % s\n ", buf);
+
+		//now reply the client with the same data
+		//if (sendto(s, buf, recv_len, 0, (struct sockaddr*) &si_other, slen) == SOCKET_ERROR)
+		//{
+		//	printf(" sendto() failed with error code : % d ", WSAGetLastError());
+		//	exit(EXIT_FAILURE);
+		//}
+	}
+
+	closesocket(s);
+	WSACleanup();
+
+	return 0;
+	return false;
 }

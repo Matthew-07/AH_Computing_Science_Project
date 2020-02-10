@@ -2,6 +2,9 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
+#define JOIN_QUEUE 1
+#define LEAVE_QUEUE 2
+
 bool inline sendData(SOCKET& s, char* buff, int dataLength)
 {
 	while (dataLength > 0) {

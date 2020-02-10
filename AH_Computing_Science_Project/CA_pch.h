@@ -18,6 +18,7 @@
 #pragma comment(lib,"dwrite")
 
 #include <stdlib.h>
+#include <chrono>
 
 #include <winsock2.h>
 #include <ws2tcpip.h>

@@ -2,6 +2,30 @@
 
 #include "GC_pch.h"
 
+// Used for storing information about the latency between a player and server.
+struct Connection {
+public:
+	in6_addr serverIP;
+	float ping;
+
+	Connection(in6_addr id, int32_t p) {
+		serverIP = id;
+		ping = p;
+	}
+};
+
+// Store information about each player in queue to find a game
+struct Player {
+public:
+	int id = -1;
+	std::vector<Connection> pings;
+	SOCKET* playerSocket; // So the matchmaking thread can send info about the game.
+
+	void addConnection(in6_addr ip, int32_t ping) {
+		pings.push_back(Connection(ip, ping));
+	}
+};
+
 class Database;
 
 class Coordinator {
@@ -18,6 +42,8 @@ private:
 	bool userThread(LPVOID clientSocket); // Thread for handling an individual client
 	bool gameServerThread(LPVOID serverSocket); // Thread for handling an individual game server
 
+	bool matchmakingThread(); // Thread for assigning players to games.
+
 #define GAMESERVER_PORT "26534"
 #define USER_PORT "26535"
 	//const char* HOSTNAME = "mae_ahcompsci_gc";
@@ -27,8 +53,13 @@ private:
 
 	std::thread*				m_userConnectionsThread;
 	std::thread*				m_serverConnectionsThread;
+	std::thread*				m_matchmakingThread;
 	std::vector<std::thread>	m_userThreads;
 	std::vector<std::thread>	m_serverThreads;
+
+	std::list<Player>			m_matchmakingQueue;
+
+	std::list<in_addr6*>			m_serverIPs;
 
 	Database *m_db = NULL;
 };
