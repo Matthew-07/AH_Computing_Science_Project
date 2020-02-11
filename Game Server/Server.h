@@ -5,7 +5,7 @@
 #define CLIENT_PORT 26533
 
 //#define BUFFER_SIZE 512
-#define BUFFER_SIZE 4
+#define BUFFER_SIZE 8
 
 class Server {
 public:

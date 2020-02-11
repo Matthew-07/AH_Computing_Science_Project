@@ -14,5 +14,8 @@ private:
 	SOCKET m_GCSocket;
 	SOCKET m_udpSocket;
 
+	void checkPings(in6_addr * addressBuffer, int64_t * avgPingBuffer, int numberOfServers);
+	void sendPings(sockaddr* address, int slen);
+	void recievePings(sockaddr* address, int64_t* pingBuffer, int slen);
 };
 

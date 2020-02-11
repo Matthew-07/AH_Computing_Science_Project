@@ -48,7 +48,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_PAINT:
 		onPaint();
-		InvalidateRect(m_logInHandle, NULL, false);
+		//InvalidateRect(m_logInHandle, NULL, false);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -58,6 +58,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		LPMINMAXINFO lpMMI = (LPMINMAXINFO)lParam;
 		lpMMI->ptMinTrackSize.x = 624;
 		lpMMI->ptMinTrackSize.y = 736;
+		break;
 	}
 	case CA_SHOWMAIN:
 		ShowWindow(m_findGameButton, wParam);

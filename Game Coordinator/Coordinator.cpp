@@ -244,9 +244,9 @@ bool Coordinator::userThread(LPVOID lParam)
 			Player p;
 			p.id = *userId;
 			p.playerSocket = &userSocket;
+			std::cout << "Player " << *userId << " requested to join matchmaking queue:\n";
 			for (int a = 0; a < *int32Buff; a++) {
 				p.addConnection(addrBuff[a],pingBuff[a]);
-				std::cout << addrBuff[a].u.Byte << "\t";
 				for (int i = 0; i < 7; i++) {
 					std::cout << addrBuff[a].u.Word[i] << ".";
 				}

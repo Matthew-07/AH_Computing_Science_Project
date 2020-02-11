@@ -157,6 +157,7 @@ bool Server::recievePackets()
 
 	char buf[BUFFER_SIZE];
 	//keep listening for data
+	int counter = 0;
 	while (true)
 	{
 		//fflush(stdout);
@@ -172,17 +173,23 @@ bool Server::recievePackets()
 		}
 
 		//print details of the client/peer and the data received
-		char *buff = new char[32];
-		inet_ntop(AF_INET6, &si_other.sin6_addr, buff, 32);
-		printf(" Received packet from % s: % d\n " , buff, ntohs(si_other.sin6_port));
-		printf(" Data: % s\n ", buf);
+		if (counter == 50) {
+			char* buff = new char[32];
+			inet_ntop(AF_INET6, &si_other.sin6_addr, buff, 32);
+			printf(" Received packet from % s: % d\n ", buff, ntohs(si_other.sin6_port));
+			printf(" Data: % i\n ", (int64_t*) buf);
+
+			counter = 0;
+		}
 
 		//now reply the client with the same data
-		//if (sendto(s, buf, recv_len, 0, (struct sockaddr*) &si_other, slen) == SOCKET_ERROR)
-		//{
-		//	printf(" sendto() failed with error code : % d ", WSAGetLastError());
-		//	exit(EXIT_FAILURE);
-		//}
+		if (sendto(s, buf, recv_len, 0, (struct sockaddr*) &si_other, slen) == SOCKET_ERROR)
+		{
+			printf(" sendto() failed with error code : % d ", WSAGetLastError());
+			exit(EXIT_FAILURE);
+		}
+
+		counter++;
 	}
 
 	closesocket(s);
