@@ -46,9 +46,20 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="checkLogIn.sql" />
-    <CopyFileToFolders Include="checkUsername.sql" />
-    <CopyFileToFolders Include="createAccount.sql" />
-    <CopyFileToFolders Include="createTable.sql" />
+    <CopyFileToFolders Include="checkLogIn.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="checkUsername.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="createAccount.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="createTable.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="addGame.sql" />
+    <CopyFileToFolders Include="addParticipant.sql" />
+    <CopyFileToFolders Include="addTeam.sql" />
   </ItemGroup>
 </Project>

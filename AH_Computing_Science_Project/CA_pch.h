@@ -29,6 +29,7 @@
 #include <stdio.h>
 
 #include <iostream>
+#include <fstream>
 #include <string>
 
 #pragma comment(lib, "Ws2_32.lib")

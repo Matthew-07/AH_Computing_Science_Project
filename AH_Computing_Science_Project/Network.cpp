@@ -16,7 +16,7 @@ bool Network::init() {
 		return false;
 	}
 
-	// Set timeout time for recv on UDP socket. It will never wait more than 500ms for a packet.
+	// Set timeout time for recieve operations on UDP socket. It will never wait more than 500ms for a packet.
 	DWORD timeout = 500;
 	if (setsockopt(m_udpSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) == SOCKET_ERROR) {
 		MessageBoxA(NULL, "Failed to set socket option:\nUDP Timeout", "Error", NULL);
@@ -28,12 +28,26 @@ bool Network::init() {
 		hints;
 
 	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
+	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_protocol = IPPROTO_TCP;	
+
+	std::ifstream addressFile = std::ifstream("GC_ip.txt");
+	char addr[64];
+	ZeroMemory(addr, 64);
+	if (!addressFile) {
+		MessageBoxA(NULL, "Failed to load Game Coordinator IP Address.", "Error", NULL);
+		return false;
+	}
+	else {		
+		addressFile.read(addr, 64);
+		addressFile.close();
+		MessageBoxA(NULL, addr, "msg", NULL);
+	}
 
 	// Resolve the server address and port
-	iResult = getaddrinfo("DESKTOP-BJ9V93R", COORDINATOR_PORT, &hints, &result);
+	iResult = getaddrinfo(addr, COORDINATOR_PORT, &hints, &result);	
+	//iResult = getaddrinfo("2a00:23c4:3149:e300:dcdb:f1c4:c76c:24f2", COORDINATOR_PORT, &hints, &result);
 	if (iResult != 0) {
 		std::string err("getaddrinfo failed with error: %d\n");
 		char buff[64];
@@ -42,6 +56,9 @@ bool Network::init() {
 		WSACleanup();
 		return false;
 	}
+	char buff[64];
+	inet_ntop(AF_INET6, result->ai_addr, buff, 64);
+	MessageBoxA(NULL, buff, "Server Ip", NULL);
 
 	m_GCSocket = INVALID_SOCKET;
 
@@ -52,8 +69,9 @@ bool Network::init() {
 		m_GCSocket = socket(ptr->ai_family, ptr->ai_socktype,
 			ptr->ai_protocol);
 		if (m_GCSocket == INVALID_SOCKET) {
-			//printf("socket failed with error: %ld\n", WSAGetLastError());
-			MessageBoxA(NULL, "Failed to connect to server.", "Error", NULL);
+			char buff[512];
+			sprintf_s(buff, "Failed to connect to server with error: %i", WSAGetLastError());
+			MessageBoxA(NULL, buff, "Error", NULL);
 			WSACleanup();
 			return false;
 		}
@@ -71,7 +89,9 @@ bool Network::init() {
 	freeaddrinfo(result);
 
 	if (m_GCSocket == INVALID_SOCKET) {
-		MessageBoxA(NULL, "Failed to connect to server.", "Error", NULL);;
+		char buff[512];
+		sprintf_s(buff, "Failed (Line 77) to connect to server with error: %i", WSAGetLastError());
+		MessageBoxA(NULL, buff, "Error", NULL);
 		WSACleanup();
 		return false;
 	}
@@ -165,6 +185,8 @@ void Network::checkPings(in6_addr* addressBuffer, int64_t* avgPingBuffer, const 
 
 	int64_t** pingBuff = new int64_t * [numberOfServers];
 
+	sockaddr_in6* addr = new sockaddr_in6[numberOfServers];
+
 	// First check there are no packets already queued as these would cause an incorrect result.
 	char* checkBuff = new char[8];
 	fd_set checkSocket;
@@ -184,12 +206,9 @@ void Network::checkPings(in6_addr* addressBuffer, int64_t* avgPingBuffer, const 
 			break;
 		}
 	}
-	delete checkBuff;
+	delete[] checkBuff;
 
 	for (int s = 0; s < numberOfServers; s++) {
-
-		
-		
 
 		pingBuff[s] = new int64_t[100];
 
@@ -199,15 +218,15 @@ void Network::checkPings(in6_addr* addressBuffer, int64_t* avgPingBuffer, const 
 
 		avgPingBuffer[s] = 0;
 
-		sockaddr_in6 addr;
-		int slen = sizeof(addr);
-		memset(&addr, 0, slen);
-		addr.sin6_family = AF_INET6;
-		addr.sin6_addr = addressBuffer[s];
-		addr.sin6_port = htons(26533);
+		addr[s] = sockaddr_in6();
+		int slen = sizeof(addr[s]);
+		memset(addr+s, 0, slen);
+		addr[s].sin6_family = AF_INET6;
+		addr[s].sin6_addr = addressBuffer[s];
+		addr[s].sin6_port = htons(26533);
 
-		sendThreads[s] = std::thread(&Network::sendPings, this, (sockaddr*) &addr, slen);
-		recieveThreads[s] = std::thread(&Network::recievePings, this, (sockaddr*) &addr, pingBuff[s], slen);
+		recieveThreads[s] = std::thread(&Network::recievePings, this, (sockaddr*)(addr + s), pingBuff[s], slen);
+		sendThreads[s] = std::thread(&Network::sendPings, this, (sockaddr*) (addr+s), slen);		
 	}
 
 	for (int s = 0; s < numberOfServers; s++) {
@@ -234,11 +253,13 @@ void Network::checkPings(in6_addr* addressBuffer, int64_t* avgPingBuffer, const 
 		}
 	}
 
-	delete[] pingBuff, sendThreads, recieveThreads;
+	delete[] pingBuff, sendThreads, recieveThreads, addr;
 }
 
 void Network::sendPings(sockaddr* address, int slen)
 {
+	OutputDebugStringA("\n");
+
 	int64_t* buff = new int64_t;
 	for (int i = 0; i < 100; i++) {
 		*buff = (std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -251,7 +272,19 @@ void Network::sendPings(sockaddr* address, int slen)
 			OutputDebugStringA("Error: ");
 			OutputDebugStringA(buff);
 			OutputDebugStringA("\n");
+			sockaddr_in6* addr = (sockaddr_in6*)address;
+			char charBuff[64];
+			inet_ntop(AF_INET6, &addr->sin6_addr, charBuff, 64);
+			OutputDebugStringA(charBuff);
+			OutputDebugStringA("\n");
 			exit(EXIT_FAILURE);
+		}
+		if (i % 20 == 0) {
+			sockaddr_in6 * addr = (sockaddr_in6*)address;
+			char charBuff[64];
+			inet_ntop(AF_INET6, &addr->sin6_addr, charBuff, 64);
+			OutputDebugStringA(charBuff);
+			OutputDebugStringA("\n");
 		}
 	}
 	delete buff;

@@ -53,6 +53,9 @@
     <Image Include="MAINWINDOWICON.ico" />
     <Image Include="MAINWINDOWICONSMALL.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="GC_ip.txt" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{963953C5-25B6-4B98-AC0D-BD85F39873F6}</ProjectGuid>

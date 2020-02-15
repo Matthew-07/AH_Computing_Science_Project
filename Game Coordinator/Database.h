@@ -4,6 +4,24 @@
 
 // A class for interacting with the database
 
+//int* teams, int** participants, int numberOfTeams, int* numberOfParticipants
+
+// Use a struct to pass information about the game to make code more readable
+struct GameInfo {
+public:
+	int* teams;
+	int* scores;
+	int numberOfTeams;
+
+
+	int** participants;	
+	int* numberOfParticipants; // Array storing the number of participants in each team.
+
+
+	int gameDuration;
+	char * date;
+};
+
 class Database
 {
 public:
@@ -11,6 +29,7 @@ public:
 
 	int addUser(std::string username, std::string password);
 	int logIn(std::string username, std::string password);
+	bool addGame(GameInfo &info);
 
 	~Database();
 	
@@ -28,6 +47,10 @@ private:
 	std::string q_checkUsername;
 	std::string q_createAccount;
 	std::string q_checkLogIn;
+
+	std::string q_addGame;
+	std::string q_addTeam;
+	std::string q_addParticipant;
 
 
 };

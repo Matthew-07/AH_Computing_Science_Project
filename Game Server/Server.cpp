@@ -33,8 +33,21 @@ bool Server::start()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+	std::ifstream addressFile = std::ifstream("GC_ip.txt");
+	char addr[64];
+	ZeroMemory(addr,64);
+	if (!addressFile) {
+		MessageBoxA(NULL, "Failed to load Game Coordinator IP Address.", "Error", NULL);
+		return false;
+	}
+	else {
+		addressFile.read(addr, 64);
+		addressFile.close();
+		MessageBoxA(NULL, addr, "msg", NULL);
+	}
+
 	// Resolve the server address and port
-	iResult = getaddrinfo("DESKTOP-BJ9V93R", COORDINATOR_PORT, &hints, &result);
+	iResult = getaddrinfo(addr, COORDINATOR_PORT, &hints, &result);
 	if (iResult != 0) {
 		printf("getaddrinfo failed with error: %d\n", iResult);
 		WSACleanup();
@@ -177,7 +190,7 @@ bool Server::recievePackets()
 			char* buff = new char[32];
 			inet_ntop(AF_INET6, &si_other.sin6_addr, buff, 32);
 			printf(" Received packet from % s: % d\n ", buff, ntohs(si_other.sin6_port));
-			printf(" Data: % i\n ", (int64_t*) buf);
+			printf(" Data: % i\n ", *((int64_t*) buf));
 
 			counter = 0;
 		}

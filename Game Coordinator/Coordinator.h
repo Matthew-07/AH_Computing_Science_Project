@@ -24,6 +24,13 @@ public:
 	void addConnection(in6_addr ip, int32_t ping) {
 		pings.push_back(Connection(ip, ping));
 	}
+
+	bool shouldLeave = false;
+};
+
+struct Server {
+	in_addr6* ip;
+	SOCKET* socket;
 };
 
 class Database;
@@ -59,7 +66,7 @@ private:
 
 	std::list<Player>			m_matchmakingQueue;
 
-	std::list<in_addr6*>			m_serverIPs;
+	std::list<Server>			m_servers;
 
 	Database *m_db = NULL;
 };

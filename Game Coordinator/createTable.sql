@@ -6,14 +6,20 @@ password TEXT
 
 CREATE TABLE IF NOT EXISTS games(
 id INTEGER PRIMARY KEY,
-played TEXT,
+datePlayed TEXT,
 duration INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS teams(
+id INTEGER PRIMARY KEY,
+gameId INTEGER,
+score INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS particpations(
 playerId INTEGER,
-gameId INTEGER,
-PRIMARY KEY (playerID,gameID),
-FOREIGN KEY(playerID) REFERENCES users(id),
-FOREIGN KEY(gameID) REFERENCES games(id)
+teamId INTEGER,
+PRIMARY KEY (playerID,teamID),
+FOREIGN KEY (playerID) REFERENCES users(id),
+FOREIGN KEY (teamId) REFERENCES teams(id)
 );

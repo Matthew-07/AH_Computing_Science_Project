@@ -2,8 +2,16 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-#define JOIN_QUEUE 1
-#define LEAVE_QUEUE 2
+// Client -> Coordinator commands
+#define JOIN_QUEUE		00001
+#define LEAVE_QUEUE		00002
+
+// Coordinator -> Server commands
+#define START_GAME		10001
+
+// Server -> Coordinator
+#define SERVER_READY 	20001
+
 
 bool inline sendData(SOCKET& s, char* buff, int dataLength)
 {
