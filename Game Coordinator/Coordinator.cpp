@@ -216,69 +216,107 @@ bool Coordinator::userThread(LPVOID lParam)
 
 	// Wait for commands
 
+	fd_set recieveSocket;
+	FD_ZERO(&recieveSocket);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 1000;	
+
+	std::list<int32_t> tasks;
+
 	while (true) {
-		int32_t* int32Buff = new int32_t; // decide size later
-		if (!recieveData(userSocket, (char*) int32Buff, 4))
-		{
-			// Connection lost
-			closesocket(userSocket);
+
+		FD_SET(userSocket, &recieveSocket);
+		if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
 			return false;
 		}
-		// Respond to command
-		switch (*int32Buff) {
-		case JOIN_QUEUE:
-		{
-			*int32Buff = m_servers.size();
-			sendData(userSocket, (char*)int32Buff, sizeof(*int32Buff));
-			in6_addr* addrBuff = new in6_addr[*int32Buff];
-			for (auto server : m_servers) {
-				memcpy(addrBuff, server.ip, sizeof(in6_addr));
-				addrBuff++;
+		if (FD_ISSET(userSocket, &recieveSocket)) {
+			int32_t* int32Buff = new int32_t;
+			if (!recieveData(userSocket, (char*)int32Buff, 4))
+			{
+				// Connection lost
+				closesocket(userSocket);
+				return false;
 			}
-			addrBuff -= *int32Buff;
-			sendData(userSocket, (char*)addrBuff, (*int32Buff) * sizeof(in6_addr));
+			// Respond to command
+			switch (*int32Buff) {
+			case JOIN_QUEUE:
+			{
+				*int32Buff = m_servers.size();
 
-			int64_t* pingBuff = new int64_t[*int32Buff];
-			recieveData(userSocket, (char*)pingBuff, (*int32Buff) * sizeof(pingBuff[0]));
-
-			Player p;
-			p.id = *userId;
-			p.playerSocket = &userSocket;
-			std::cout << "Player " << *userId << " requested to join matchmaking queue:\n";
-
-			// Insertion sort
-			for (int i = 1; i < *int32Buff; i++) {
-				int64_t tempPing = pingBuff[i];
-				in6_addr tempIp = addrBuff[i];
-
-				int index = i;
-				while (index > 0 and tempPing < pingBuff[index - 1]) {
-					pingBuff[index] = pingBuff[index - 1];
-					addrBuff[index] = addrBuff[index - 1];
-					index--;
-					}
-				pingBuff[index] = tempPing;
-				addrBuff[index] = tempIp;
-			}
-
-			for (int a = 0; a < *int32Buff; a++) {
-				p.addConnection(addrBuff[a],pingBuff[a]);
-				char str[64];
-				inet_ntop(AF_INET6, addrBuff+a, str, 64);
-				std::cout << str << ":\t" << pingBuff[a] << "\n";
-			}
-
-			break;
-		}
-		case LEAVE_QUEUE:
-			for (auto it : m_matchmakingQueue) {
-				if (it.id = *userId) {
-					it.shouldLeave = true;
-					break;
+				sendData(userSocket, (char*)int32Buff, sizeof(*int32Buff));
+				in6_addr* addrBuff = new in6_addr[*int32Buff];
+				for (auto server : m_servers) {
+					memcpy(addrBuff, server.ip, sizeof(in6_addr));
+					addrBuff++;
 				}
+				addrBuff -= *int32Buff;
+				sendData(userSocket, (char*)addrBuff, (*int32Buff) * sizeof(in6_addr));
+
+				if (*int32Buff == 0) {
+					std::cout << "Player " << *userId << " requested to join matchmaking queue but there are no servers available.\n\n";
+					continue;
+				}
+
+				int64_t* pingBuff = new int64_t[*int32Buff];
+				recieveData(userSocket, (char*)pingBuff, (*int32Buff) * sizeof(pingBuff[0]));
+
+				bool usableServers = false;
+				for (int i = 0; i < *int32Buff; i++) {
+					if (pingBuff[i] >= 0) {
+						usableServers = true;
+					}
+				}
+
+				if (!usableServers) {
+					std::cout << "Player " << *userId << " requested to join matchmaking queue but the player does not have a suitable connection to any of the servers.\n\n";
+					continue;
+				}
+
+				Player p;
+				p.id = *userId;
+				p.playerSocket = &userSocket;
+				std::cout << "Player " << *userId << " requested to join matchmaking queue:\n";
+
+				// Insertion sort
+				for (int i = 1; i < *int32Buff; i++) {
+					int64_t tempPing = pingBuff[i];
+					in6_addr tempIp = addrBuff[i];
+
+					int index = i;
+					while (index > 0 and tempPing < pingBuff[index - 1]) {
+						pingBuff[index] = pingBuff[index - 1];
+						addrBuff[index] = addrBuff[index - 1];
+						index--;
+					}
+					pingBuff[index] = tempPing;
+					addrBuff[index] = tempIp;
+				}
+
+				for (int a = 0; a < *int32Buff; a++) {
+					p.addConnection(addrBuff[a], pingBuff[a]);
+					char str[64];
+					inet_ntop(AF_INET6, addrBuff + a, str, 64);
+					std::cout << str << ":\t" << pingBuff[a] << "\n";
+				}
+				std::cout << std::endl;
+
+				break;
 			}
-			break;
+			case LEAVE_QUEUE:
+				for (auto it : m_matchmakingQueue) {
+					if (it.id = *userId) {
+						it.shouldLeave = true;
+						break;
+					}
+				}
+				break;
+			}
 		}
+
+		// Carry out any tasks required by other threads.
+
+
 	}
 	   
 	closesocket(userSocket);
@@ -309,15 +347,15 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 	inet_ntop(AF_INET6, &s.sin6_addr, serverAddrBuff, 64);
 	std::cout << "New server connected: " << serverAddrBuff << std::endl;
 
-	//TEMP
-	for (int i = 0; i < 5; i++) {
-		Server server;
-		server.ip = &s.sin6_addr;
-		server.socket = &serverSocket;
-		m_servers.push_back(server);
-	}
+	//for (int i = 0; i < 5; i++) {
+	Server server;
+	server.ip = &s.sin6_addr;
+	server.socket = &serverSocket;
+	m_servers.push_back(server);
+	//}
 
 	while (true) {
+
 		if (recieveData(serverSocket, recvBuff, buffLen)) {
 			std::string str = recvBuff;
 			//str.erase(std::find(str.begin(), str.end(), '\3'), str.end());

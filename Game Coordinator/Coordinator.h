@@ -26,6 +26,9 @@ public:
 	}
 
 	bool shouldLeave = false;
+
+	//std::list<int32_t>* threadTasks;
+	//void* info;
 };
 
 struct Server {

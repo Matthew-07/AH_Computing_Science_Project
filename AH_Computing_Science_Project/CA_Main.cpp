@@ -22,10 +22,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		return -1;
 	}
 
-	// User logs in
-
-	//Main Menu - user can search for a game or view their statistics.
-
 	MSG msg = { };
 
 	while (GetMessage(&msg, nullptr, 0, 0))

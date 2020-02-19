@@ -7,15 +7,19 @@
 class Network
 {
 public:
-	bool init(); // Initialize Winsock and connect to game coordinator
+	bool init(); // Initialize Winsock
+	bool startConnection(); // Connect to game coordinator
 	int logIn(bool newAccount, std::string username, std::string password);
 	bool joinMatchmakingQueue();
-private:
-	SOCKET m_GCSocket;
-	SOCKET m_udpSocket;
+	bool checkForGame();
 
+private:
+	SOCKET m_GCSocket, m_udpSocket;	
+	bool joinGame(in6_addr* serverAddress);
 	void checkPings(in6_addr * addressBuffer, int64_t * avgPingBuffer, int numberOfServers);
-	void sendPings(sockaddr* address, int slen);
-	void recievePings(sockaddr* address, int64_t* pingBuffer, int slen);
+	void sendPings(SOCKET s, sockaddr_in6 * addr);
+	void recievePings(SOCKET s, int64_t** pingBuffer, in6_addr* addressBuffer, int numberOfServers);
+
+	bool inQueue = false;
 };
 

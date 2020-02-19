@@ -12,7 +12,6 @@ bool Database::init() {
 		)).count() -start;
 
 	std::cout << "Sqlite3 object took " << (double) timeTaken / 1000000 << "ms to initialise." << std::endl;
-	std::cout << "Obj size: " << sizeof(db) << std::endl;
 
 	if (result != 0) {
 		// Database failed to open
