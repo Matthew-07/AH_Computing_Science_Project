@@ -3,12 +3,18 @@
 
 bool Coordinator::run()
 {
-	m_userConnectionsThread = new std::thread([&]() {userConnectionsThread(); });
-	m_serverConnectionsThread = new std::thread([&]() {gameServerConnectionsThread(); });
+	m_userConnectionsThread = new std::thread(&Coordinator::userConnectionsThread,this);
+	m_serverConnectionsThread = new std::thread(&Coordinator::gameServerConnectionsThread, this);
+
+	m_matchmakingThread = new std::thread(&Coordinator::matchmakingThread, this);
 
 	m_userConnectionsThread->join();
-
 	m_serverConnectionsThread->join();
+
+	m_matchmakingThread->join();
+
+	delete m_userConnectionsThread, m_serverConnectionsThread, m_matchmakingThread;
+
 	return true;
 }
 
@@ -24,7 +30,7 @@ bool Coordinator::init()
 	// Initialize Winsock
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0) {
-		printf("WSAStartup failed: %d\n", iResult);
+		printf("WSAStartup failed: %d\n\n", iResult);
 		return false;
 	}
 	return true;
@@ -43,7 +49,7 @@ bool Coordinator::startServer()
 	// Resolve the local address and port to be used by the server
 	int iResult = getaddrinfo(NULL, USER_PORT, &hints, &result);
 	if (iResult != 0) {
-		printf("client getaddrinfo failed: %d\n", iResult);
+		printf("client getaddrinfo failed: %d\n\n", iResult);
 		WSACleanup();
 		return false;
 	}
@@ -55,7 +61,7 @@ bool Coordinator::startServer()
 	m_UserListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 
 	if (m_UserListenSocket == INVALID_SOCKET) {
-		printf("Error at client socket(): %ld\n", WSAGetLastError());
+		printf("Error at client socket(): %ld\n\n", WSAGetLastError());
 		freeaddrinfo(result);
 		WSACleanup();
 		return false;
@@ -64,7 +70,7 @@ bool Coordinator::startServer()
 	// Setup the TCP listening socket
 	iResult = bind(m_UserListenSocket, result->ai_addr, (int)result->ai_addrlen);
 	if (iResult == SOCKET_ERROR) {
-		printf("client bind failed with error: %d\n", WSAGetLastError());
+		printf("client bind failed with error: %d\n\n", WSAGetLastError());
 		freeaddrinfo(result);
 		closesocket(m_UserListenSocket);
 		WSACleanup();
@@ -80,7 +86,7 @@ bool Coordinator::startServer()
 	// Resolve the local address and port to be used by the server
 	iResult = getaddrinfo(NULL, GAMESERVER_PORT, &hints, &result);
 	if (iResult != 0) {
-		printf("getaddrinfo failed: %d\n", iResult);
+		printf("getaddrinfo failed: %d\n\n", iResult);
 		WSACleanup();
 		return false;
 	}
@@ -92,7 +98,7 @@ bool Coordinator::startServer()
 	m_GameServerListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 
 	if (m_GameServerListenSocket == INVALID_SOCKET) {
-		printf("Error at socket(): %ld\n", WSAGetLastError());
+		printf("Error at socket(): %ld\n\n", WSAGetLastError());
 		freeaddrinfo(result);
 		WSACleanup();
 		return false;
@@ -101,7 +107,7 @@ bool Coordinator::startServer()
 	// Setup the TCP listening socket
 	iResult = bind(m_GameServerListenSocket, result->ai_addr, (int)result->ai_addrlen);
 	if (iResult == SOCKET_ERROR) {
-		printf("bind failed with error: %d\n", WSAGetLastError());
+		printf("bind failed with error: %d\n\n", WSAGetLastError());
 		freeaddrinfo(result);
 		closesocket(m_GameServerListenSocket);
 		WSACleanup();
@@ -118,7 +124,7 @@ bool Coordinator::userConnectionsThread() {
 
 	while (true) {
 		if (listen(m_UserListenSocket, SOMAXCONN) == SOCKET_ERROR) {
-			printf("Listen failed with error: %ld\n", WSAGetLastError());
+			printf("Listen failed with error: %ld\n\n", WSAGetLastError());
 			closesocket(m_UserListenSocket);
 			WSACleanup();
 			return false;
@@ -127,10 +133,10 @@ bool Coordinator::userConnectionsThread() {
 		// Accept a client socket
 		ClientSocket = accept(m_UserListenSocket, NULL, NULL);
 		if (ClientSocket == INVALID_SOCKET) {
-			printf("accept failed: %d\n", WSAGetLastError());
+			printf("accept failed: %d\n\n", WSAGetLastError());
 		}
 
-		m_userThreads.push_back(std::thread([&]() {userThread((LPVOID)ClientSocket); }));
+		m_userThreads.push_back(std::thread(&Coordinator::userThread, this, (LPVOID) ClientSocket));
 	}
 
 	return true;
@@ -141,7 +147,7 @@ bool Coordinator::gameServerConnectionsThread() {
 
 	while (true) {
 		if (listen(m_GameServerListenSocket, SOMAXCONN) == SOCKET_ERROR) {
-			printf("Listen failed with error: %ld\n", WSAGetLastError());
+			printf("Listen failed with error: %ld\n\n", WSAGetLastError());
 			closesocket(m_GameServerListenSocket);
 			WSACleanup();
 			return false;
@@ -153,7 +159,7 @@ bool Coordinator::gameServerConnectionsThread() {
 		//	printf("accept failed: %d\n", WSAGetLastError());
 		//}
 
-		m_serverThreads.push_back(std::thread([&]() {gameServerThread((LPVOID) ClientSocket); }));
+		m_serverThreads.push_back(std::thread(&Coordinator::gameServerThread, this, (LPVOID) ClientSocket));
 	}
 
 	return true;
@@ -177,7 +183,7 @@ bool Coordinator::userThread(LPVOID lParam)
 		char recvBuff[66];
 
 		if (!recieveData(userSocket, recvBuff, 66)) {
-			// Connection lost
+			// Connection lost			
 			closesocket(userSocket);
 			return false;
 		}
@@ -222,12 +228,33 @@ bool Coordinator::userThread(LPVOID lParam)
 	waitTime.tv_sec = 0;
 	waitTime.tv_usec = 1000;	
 
-	std::list<int32_t> tasks;
+	std::list<COMMAND> tasks;
 
 	while (true) {
 
 		FD_SET(userSocket, &recieveSocket);
 		if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+			printf("Player %i disconnected.\n\n", *userId);
+			bool playerFound = false;
+			for (auto it : m_matchmakingQueue) {
+				if (it->id = *userId) {
+					it->shouldLeave = true;
+					playerFound = true;
+					break;
+				}
+			}
+			closesocket(userSocket);
+
+			while (playerFound) {
+				if (tasks.size() > 0) {
+					if (tasks.front().type == COMM_LEAVE) {
+						return false;
+					}
+				}
+				else {
+					Sleep(100);
+				}
+			}
 			return false;
 		}
 		if (FD_ISSET(userSocket, &recieveSocket)) {
@@ -235,7 +262,27 @@ bool Coordinator::userThread(LPVOID lParam)
 			if (!recieveData(userSocket, (char*)int32Buff, 4))
 			{
 				// Connection lost
+				printf("Player %i disconnected.\n\n", *userId);
+				bool playerFound = false;
+				for (auto it : m_matchmakingQueue) {
+					if (it->id = *userId) {
+						it->shouldLeave = true;
+						playerFound = true;
+						break;
+					}
+				}
 				closesocket(userSocket);
+
+				while (playerFound) {
+					if (tasks.size() > 0) {
+						if (tasks.front().type == COMM_LEAVE) {
+							return false;
+						}
+					}
+					else {
+						Sleep(100);
+					}
+				}
 				return false;
 			}
 			// Respond to command
@@ -247,14 +294,14 @@ bool Coordinator::userThread(LPVOID lParam)
 				sendData(userSocket, (char*)int32Buff, sizeof(*int32Buff));
 				in6_addr* addrBuff = new in6_addr[*int32Buff];
 				for (auto server : m_servers) {
-					memcpy(addrBuff, server.ip, sizeof(in6_addr));
+					memcpy(addrBuff, server->ip, sizeof(in6_addr));
 					addrBuff++;
 				}
 				addrBuff -= *int32Buff;
 				sendData(userSocket, (char*)addrBuff, (*int32Buff) * sizeof(in6_addr));
 
 				if (*int32Buff == 0) {
-					std::cout << "Player " << *userId << " requested to join matchmaking queue but there are no servers available.\n\n";
+					std::cout << "Player " << *userId << " requested to join the matchmaking queue but there are no servers available.\n\n";
 					continue;
 				}
 
@@ -269,14 +316,15 @@ bool Coordinator::userThread(LPVOID lParam)
 				}
 
 				if (!usableServers) {
-					std::cout << "Player " << *userId << " requested to join matchmaking queue but the player does not have a suitable connection to any of the servers.\n\n";
+					std::cout << "Player " << *userId << " requested to join the matchmaking queue but the player does not have a suitable connection to any of the servers.\n\n";
 					continue;
 				}
 
-				Player p;
-				p.id = *userId;
-				p.playerSocket = &userSocket;
-				std::cout << "Player " << *userId << " requested to join matchmaking queue:\n";
+				Player * p = new Player();
+				p->id = *userId;
+				p->playerSocket = &userSocket;
+				p->threadTasks = &tasks;
+				std::cout << "Player " << *userId << " requested to join the matchmaking queue:" << std::endl;
 
 				// Insertion sort
 				for (int i = 1; i < *int32Buff; i++) {
@@ -294,29 +342,50 @@ bool Coordinator::userThread(LPVOID lParam)
 				}
 
 				for (int a = 0; a < *int32Buff; a++) {
-					p.addConnection(addrBuff[a], pingBuff[a]);
+					p->addConnection(addrBuff[a], pingBuff[a]);
 					char str[64];
 					inet_ntop(AF_INET6, addrBuff + a, str, 64);
 					std::cout << str << ":\t" << pingBuff[a] << "\n";
 				}
-				std::cout << std::endl;
 
+				m_matchmakingQueue.push_back(p);
+				std::cout << std::endl;
 				break;
 			}
 			case LEAVE_QUEUE:
+			{
+				std::cout << "Player " << *userId << " requested to leave the matchmaking queue." << std::endl << std::endl;
+
+				bool playerFound = false;
 				for (auto it : m_matchmakingQueue) {
-					if (it.id = *userId) {
-						it.shouldLeave = true;
+					if (it->id = *userId) {
+						it->shouldLeave = true;
+						playerFound = true;
 						break;
 					}
 				}
+				if (!playerFound) {
+					// Player was not in queue or a match was already found, doesn't matter.
+					int32_t buff = -1;
+					sendData(userSocket, (char*)&buff, 4);					
+				}
 				break;
+			}
 			}
 		}
 
 		// Carry out any tasks required by other threads.
+		while (tasks.size() > 0) {
+			switch (tasks.front().type) {
+			case COMM_LEAVE:
+				int32_t buff = 0;
+				sendData(userSocket, (char*)&buff, 4);
+				tasks.pop_front();
 
-
+				printf("Player %i left the queue.\n\n", *userId);
+				break;
+			}
+		}
 	}
 	   
 	closesocket(userSocket);
@@ -345,13 +414,13 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 
 	char serverAddrBuff[64];
 	inet_ntop(AF_INET6, &s.sin6_addr, serverAddrBuff, 64);
-	std::cout << "New server connected: " << serverAddrBuff << std::endl;
+	std::cout << "New server connected: " << serverAddrBuff << std::endl << std::endl;
 
 	//for (int i = 0; i < 5; i++) {
 	Server server;
 	server.ip = &s.sin6_addr;
 	server.socket = &serverSocket;
-	m_servers.push_back(server);
+	m_servers.push_back(&server);
 	//}
 
 	while (true) {
@@ -363,12 +432,12 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 			std::cout << "Message Recieved: " << str << std::endl << std::endl;
 		}
 		else {
-			std::cout << "Connection lost" << std::endl;
+			std::cout << "Connection lost" << std::endl << std::endl;
 			closesocket(serverSocket);
 
-			std::list<Server>::iterator it;
+			std::list<Server*>::iterator it;
 			for (it = m_servers.begin(); it != m_servers.end(); it++) {
-				if (it->ip == &s.sin6_addr) {
+				if ((*it)->ip == &s.sin6_addr) {
 					m_servers.erase(it);
 					break;
 				}
@@ -376,9 +445,9 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 			return false;
 		}
 	}
-	std::list<Server>::iterator it;
+	std::list<Server*>::iterator it;
 	for (it = m_servers.begin(); it != m_servers.end(); it++) {
-		if (it->ip == &s.sin6_addr) {
+		if ((*it)->ip == &s.sin6_addr) {
 			m_servers.erase(it);
 			break;
 		}
@@ -388,12 +457,20 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 
 bool Coordinator::matchmakingThread()
 {
-	std::list<Player>::iterator playerA, playerB;
+	std::list<Player*>::iterator playerA, playerB;
 	int maxPing = 120;
 	bool foundGame;
 	while (true) {
 		if (m_matchmakingQueue.size() < 2) {
-			Sleep(100); // To prevent this thread using up CPU time doing nothing.
+			if (m_matchmakingQueue.size() == 1) {
+				if (m_matchmakingQueue.front()->shouldLeave) {
+					COMMAND c;
+					c.type = COMM_LEAVE;
+					m_matchmakingQueue.front()->threadTasks->push_back(c);
+					m_matchmakingQueue.pop_front();
+				}
+				Sleep(100);
+			}
 		}
 		else {
 			/*
@@ -410,79 +487,117 @@ bool Coordinator::matchmakingThread()
 					// Try to match players in a game.
 
 					// If playerA wants to leave the queue
-					if (playerA->shouldLeave) {
-						m_matchmakingQueue.erase(playerA++);
-						break;
+					if ((*playerA)->shouldLeave) {
+						COMMAND c;
+						c.type = COMM_LEAVE;
+						(*playerA)->threadTasks->push_back(c);
+						delete (*playerA);
+						m_matchmakingQueue.erase(playerA++);						
+						break; // Need new playerA
 					}
 
 					// If playerB wants to leave the queue
-					if (playerB->shouldLeave) {
+					if ((*playerB)->shouldLeave) {
+						COMMAND c;
+						c.type = COMM_LEAVE;
+						(*playerB)->threadTasks->push_back(c);
+						delete (*playerB);
 						m_matchmakingQueue.erase(playerB++);
-						continue;
+						
+						continue; // Need a new playerB
 					}
 
 					// Now try to put them in a game.
 					// For now, all that is needed a server which they both have a low ping with.
-					for (int s1 = 0; s1 < playerA->pings.size(); s1++) {
-						if (playerA->pings[s1].ping < 0 || playerA->pings[s1].ping > 120) continue;
-						for (int s2 = 0; s2 < playerB->pings.size(); s2++) {							
+					for (int s1 = 0; s1 < (*playerA)->pings.size(); s1++) {
+						if ((*playerA)->pings[s1].ping < 0 || (*playerA)->pings[s1].ping > 120) continue;
+						for (int s2 = 0; s2 < (*playerB)->pings.size(); s2++) {							
 							bool serverIsSame = true;
 							for (int w = 0; w < 8; w++) {
-								if (playerA->pings[s1].serverIP.u.Word[w] != playerB->pings[s2].serverIP.u.Word[w]) {
+								if ((*playerA)->pings[s1].serverIP.u.Word[w] != (*playerB)->pings[s2].serverIP.u.Word[w]) {
 									serverIsSame = false;
 									break;
 								}
 							}							
 							if (serverIsSame) {
-								if (playerB->pings[s2].ping < 0 || playerB->pings[s2].ping > 120) {
+								if ((*playerB)->pings[s2].ping < 0 || (*playerB)->pings[s2].ping > 120) {
 									break;
 								}
 								else {
 									// Create game
 									// First request server to host game
 									// Find server object
-									std::list<Server>::iterator it;
-									for (it = m_servers.begin(); it != m_servers.end(); it++ ) {
+									bool serverFound = false;
+									std::list<Server*>::iterator serverIt;
+									for (serverIt = m_servers.begin(); serverIt != m_servers.end(); serverIt++ ) {
 										bool serverIsSame = true;
 										for (int w = 0; w < 8; w++) {
-											if (playerA->pings[s1].serverIP.u.Word[w] != it->ip->u.Word[w]) {
+											if ((*playerA)->pings[s1].serverIP.u.Word[w] != (*serverIt)->ip->u.Word[w]) {
 												serverIsSame = false;
 												break;
 											}
 										}
+										if (serverIsSame) {
+											serverFound = true;
+											break;
+										}										
 									}
+
+									if (!serverFound) {
+										// Server must have been disconnected, don't try to use it again.
+										(*playerA)->pings[s1].ping = -1;
+										(*playerB)->pings[s2].ping = -1;
+										continue;
+									}
+
 									int32_t* buff = new int32_t;
 									*buff = START_GAME;
-									sendData(*it->socket, (char *) buff, sizeof(*buff));									
+									sendData(*(*serverIt)->socket, (char *) buff, sizeof(*buff));									
 
 									// Send info about the game
 									delete buff;
 									buff = new int32_t[2];
-									buff[0] = playerA->id;
-									buff[1] = playerB->id;
-									sendData(*it->socket, (char*)buff, sizeof(buff[0]) * 2);
+									buff[0] = (*playerA)->id;
+									buff[1] = (*playerB)->id;
+									sendData(*(*serverIt)->socket, (char*)buff, sizeof(buff[0]) * 2);
 
-									// Wait for server to confirm it is ready
-									delete[2] buff;
-									buff = new int32_t;
-									*buff = 0;
-									while (*buff != SERVER_READY) {
-										if (recieveData(*it->socket, (char*)buff, sizeof(*buff)) == SOCKET_ERROR) {
-											break; // TODO handle this
-										}
-									}
-									
+									//// WaserverIt for server to confirm serverIt is ready
+									//delete[2] buff;
+									//buff = new int32_t;
+									//*buff = 0;
+									//while (*buff != SERVER_READY) {
+									//	if (recieveData(*(*serverIt)->socket, (char*)buff, sizeof(*buff)) == SOCKET_ERROR) {
+									//		break; // TODO handle this
+									//	}
+									//}									
 
 									// Notify players they have been found a game.
-									
+									COMMAND c;
+									c.type = COMM_NEWGAME;
+									c.data = (*serverIt)->ip;
+									(*playerA)->threadTasks->push_back(c);
+									(*playerB)->threadTasks->push_back(c);
 
-									break;
-								}
-							}							
+									char ipBuff[64];
+									inet_ntop(AF_INET6, (*serverIt)->ip, ipBuff, 64);
+									printf("A game was created between players %i and %i\non server %s.\n", (*playerA)->id, (*playerB)->id, ipBuff);
+
+									// Remove players from matchmaking queue
+									delete (*playerA);
+									delete (*playerB);
+									m_matchmakingQueue.erase(playerA++);
+									m_matchmakingQueue.erase(playerB++);
+									foundGame = true;
+								}		
+							}
+							if (foundGame) break;
 						}
+						if (foundGame) break;
 					}
+					if (foundGame) break;
 					++playerB;
 				}
+				if (foundGame) break;
 				++playerA;
 			}
 		}

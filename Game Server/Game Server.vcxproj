@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GS_Main.cpp" />
+    <ClCompile Include="Logic.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">GS_pch.h</PrecompiledHeaderFile>
@@ -34,6 +35,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GS_pch.h" />
+    <ClInclude Include="Logic.h" />
     <ClInclude Include="Server.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

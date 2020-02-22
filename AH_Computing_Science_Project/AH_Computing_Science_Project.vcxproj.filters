@@ -80,6 +80,9 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="GC_ip.txt" />
+    <CopyFileToFolders Include="GC_ip.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="Manifest.xml" />
   </ItemGroup>
 </Project>

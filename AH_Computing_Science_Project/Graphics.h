@@ -18,6 +18,10 @@ public:
 	ID2D1Factory * getFactory() { return pFactory; }
 	IDWriteFactory* getWriteFactory() { return pWriteFactory; }
 
+	HWND getMainHWND();
+
+	bool fastRedraw = false;
+
 private:
 	Network* network = NULL;
 

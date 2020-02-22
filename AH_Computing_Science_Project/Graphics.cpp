@@ -13,6 +13,8 @@ Graphics::~Graphics() {
 	delete w_logIn;
 }
 
+HWND Graphics::getMainHWND() { return w_main->Window(); }
+
 bool Graphics::init(HINSTANCE instance, int nCmdShow) {
 	m_inst = instance;
 
@@ -26,13 +28,13 @@ bool Graphics::init(HINSTANCE instance, int nCmdShow) {
 		reinterpret_cast<IUnknown**>(&pWriteFactory)
 	))) {
 		return false;
-	}
+	}	
 
 	LoadStringW(m_inst, IDS_APPNAME, m_appName, MAX_LOADSTRING);
 
 	if (!createMainWindow(nCmdShow)) {
 		return false;
-	}
+	}	
 
 	return true;
 }

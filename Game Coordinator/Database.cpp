@@ -2,16 +2,7 @@
 
 bool Database::init() {
 
-	long long start = (std::chrono::duration_cast<std::chrono::nanoseconds>(
-		std::chrono::system_clock::now().time_since_epoch()
-		)).count();
 	int result = sqlite3_open_v2("Users.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-
-	long long timeTaken = (std::chrono::duration_cast<std::chrono::nanoseconds>(
-		std::chrono::system_clock::now().time_since_epoch()
-		)).count() -start;
-
-	std::cout << "Sqlite3 object took " << (double) timeTaken / 1000000 << "ms to initialise." << std::endl;
 
 	if (result != 0) {
 		// Database failed to open
@@ -20,7 +11,7 @@ bool Database::init() {
 	}
 
 	if (!loadQuery("CreateTable.sql", q_createTable)) {
-		std::cout << "Failed to load 'checkUsername' query." << std::endl;
+		std::cout << "Failed to load 'checkUsername' query." << std::endl << std::endl;
 		return false;
 	}
 	
@@ -29,7 +20,7 @@ bool Database::init() {
 
 	if (err != NULL) {
 		// Failed to run query
-		std::cout << "Failed to create table." << std::endl;
+		std::cout << "Failed to create table." << std::endl << std::endl;
 		std::cout << err << std::endl;
 		return false;
 	}
@@ -38,42 +29,42 @@ bool Database::init() {
 	// -- Load Queries --
 	// Check Username
 	if (!loadQuery("checkUsername.sql", q_checkUsername)) {
-		std::cout << "Failed to load 'checkUsername' query." << std::endl;
+		std::cout << "Failed to load 'checkUsername' query." << std::endl << std::endl;
 		return false;
 	}
 
 	// Create Account
 
 	if (!loadQuery("CreateAccount.sql", q_createAccount)) {
-		std::cout << "Failed to load 'createAccount' query." << std::endl;
+		std::cout << "Failed to load 'createAccount' query." << std::endl << std::endl;
 		return false;
 	}
 
 	// Check Login
 
 	if (!loadQuery("CheckLogIn.sql", q_checkLogIn)) {
-		std::cout << "Failed to load 'checkLogIn' query." << std::endl;
+		std::cout << "Failed to load 'checkLogIn' query." << std::endl << std::endl;
 		return false;
 	}
 
 	// Add Game
 
 	if (!loadQuery("addGame.sql", q_addGame)) {
-		std::cout << "Failed to load 'addGame' query." << std::endl;
+		std::cout << "Failed to load 'addGame' query." << std::endl << std::endl;
 		return false;
 	}
 
 	// Add Team
 
 	if (!loadQuery("addTeam.sql", q_addTeam)) {
-		std::cout << "Failed to load 'addTeam' query." << std::endl;
+		std::cout << "Failed to load 'addTeam' query." << std::endl << std::endl;
 		return false;
 	}
 
 	// Add Participant
 
 	if (!loadQuery("addParticipant.sql", q_addParticipant)) {
-		std::cout << "Failed to load 'addParticipant' query." << std::endl;
+		std::cout << "Failed to load 'addParticipant' query." << std::endl << std::endl;
 		return false;
 	}
 
@@ -101,7 +92,7 @@ int Database::addUser(std::string username, std::string password)
 	}
 
 	if (foundRows) {
-		std::cout << "Username in use.";
+		std::cout << "Username " << username << " in use." << std::endl << std::endl;
 		return -1;
 	}
 
@@ -114,7 +105,7 @@ int Database::addUser(std::string username, std::string password)
 		return -1;
 	}
 
-	std::cout << "Account created.";
+	std::cout << "Account created." << std::endl << std::endl;
 
 	int userId = sqlite3_last_insert_rowid(tempdb);
 	sqlite3_close_v2(tempdb);
@@ -131,13 +122,15 @@ int Database::logIn(std::string username, std::string password) {
 
 	sqlite3_exec(db, buff, returnIntCallback, &userId, &err);
 
-	std::cout << std::endl << "Buffer: " << buff << std::endl;
+	//std::cout << std::endl << "Buffer: " << buff << std::endl;
 
 	if (err != NULL) {
 		// Failed to run query
 		std::cout << buff << "\n" << err << "\n";
 		return -3;
 	}
+
+	std::cout << "Player " << userId << " connected." << std::endl << std::endl;
 
 	return userId;
 }

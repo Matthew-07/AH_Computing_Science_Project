@@ -1,7 +1,6 @@
 #pragma once
 
 #include "BaseWindow.h"
-#include "CustomMessages.h"
 
 // Tell compiler that classes exist
 class Graphics;
@@ -26,7 +25,7 @@ private:
 
 	ID2D1HwndRenderTarget *pRenderTarget;
 	ID2D1SolidColorBrush *bBlack;
-	IDWriteTextFormat *pTitleTextFormat;
+	IDWriteTextFormat *pTitleTextFormat, *pMenuTextFormat;
 
 	RECT m_rect;
 
@@ -35,5 +34,10 @@ private:
 	bool windowShown = false;
 
 	HWND m_findGameButton, m_settingsButton, m_exitButton;
+	HWND m_cancelButton;
+
+	bool findingGame = false;
+	std::chrono::steady_clock::time_point findGameTimer;
+
 };
 

@@ -2,4 +2,4 @@
 
 #include "CA_pch.h"
 
-#define CA_SHOWMAIN WM_USER
+#define CA_SHOWMAIN			WM_USER

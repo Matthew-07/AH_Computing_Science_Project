@@ -23,10 +23,13 @@ private:
 	void discardGraphicResources();
 
 	ID2D1HwndRenderTarget* pRenderTarget;
-	ID2D1SolidColorBrush *bBlack;
+	ID2D1SolidColorBrush *bBlack, *bRed;
 
 	IDWriteTextFormat* pLoginTextFormat;
+	IDWriteTextFormat* pErrorTextFormat;
 	IDWriteTextFormat* pHeadingTextFormat;
+
+	std::wstring m_errorText = L"";
 
 	RECT m_rect;
 

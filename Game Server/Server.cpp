@@ -43,7 +43,7 @@ bool Server::start()
 	else {
 		addressFile.read(addr, 64);
 		addressFile.close();
-		MessageBoxA(NULL, addr, "msg", NULL);
+		//MessageBoxA(NULL, addr, "msg", NULL);
 	}
 
 	// Resolve the server address and port

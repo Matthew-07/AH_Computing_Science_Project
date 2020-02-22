@@ -26,29 +26,60 @@ MainWindow::MainWindow(Graphics * graphics, Network * nw) : pRenderTarget(NULL)
 		&pTitleTextFormat
 	);
 	pTitleTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24.0f,
+		L"en-uk",
+		&pMenuTextFormat
+	);
+	pMenuTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 }
 
 LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
 	case WM_CREATE:
-		m_findGameButton = CreateWindowEx(NULL, L"BUTTON", L"Find Game", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 32, 256, 224, 32, Window(), NULL, m_inst, NULL);
-		m_settingsButton = CreateWindowEx(NULL, L"BUTTON", L"Settings", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 32, 320, 224, 32, Window(), NULL, m_inst, NULL);
-		m_exitButton = CreateWindowEx(NULL, L"BUTTON", L"Quit to Desktop", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 32, 384, 224, 32, Window(), NULL, m_inst, NULL);
+	{
+		UINT dpi = GetDpiForWindow(m_hwnd);
+		DPIScale = dpi / 96.0f;
+
+		GetClientRect(m_hwnd, &m_rect);
+
+		// Main Menu Controls
+		m_findGameButton = CreateWindowEx(NULL, L"BUTTON", L"Find Game", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(256), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
+		m_settingsButton = CreateWindowEx(NULL, L"BUTTON", L"Settings", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(320), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
+		m_exitButton = CreateWindowEx(NULL, L"BUTTON", L"Quit to Desktop", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(384), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
+
+		// Finding Game Controls
+		m_cancelButton = CreateWindowEx(NULL, L"BUTTON", L"Cancel", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, m_rect.right / 2 - toPixels(150), m_rect.bottom - toPixels(32 + 48), toPixels(300), toPixels(48), Window(), NULL, m_inst, NULL);
+
 		break;
+	}
+	case WM_DPICHANGED:
+	{
+		UINT dpi = GetDpiForWindow(m_hwnd);
+		DPIScale = dpi / 96.0f;
+		break;
+	}
 	case WM_SIZE:
 		GetClientRect(m_hwnd, &m_rect);
 		discardGraphicResources();
 		InvalidateRect(m_hwnd, NULL, TRUE);
 
 		if (m_logInHandle != NULL) {
-			MoveWindow(m_logInHandle, m_rect.right / 2 - 256, 32 , 512, m_rect.bottom - 64, true);
+			MoveWindow(m_logInHandle, m_rect.right / 2 - toPixels(256), toPixels(32) , toPixels(512), m_rect.bottom - toPixels(64), true);
 		}
+
+		MoveWindow(m_cancelButton, m_rect.right / 2 - toPixels(150), m_rect.bottom - toPixels(32 + 48), toPixels(300), toPixels(48), true);
 
 		break;
 	case WM_PAINT:
 		onPaint();
-		//InvalidateRect(m_logInHandle, NULL, false);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -56,8 +87,8 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_GETMINMAXINFO:
 	{
 		LPMINMAXINFO lpMMI = (LPMINMAXINFO)lParam;
-		lpMMI->ptMinTrackSize.x = 624;
-		lpMMI->ptMinTrackSize.y = 736;
+		lpMMI->ptMinTrackSize.x = toPixels(624);
+		lpMMI->ptMinTrackSize.y = toPixels(736);
 		break;
 	}
 	case CA_SHOWMAIN:
@@ -76,12 +107,51 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_COMMAND:
 		switch (HIWORD(wParam)) {
 		case BN_CLICKED:
-			if ((HWND)lParam == m_exitButton) {
-				PostQuitMessage(0);
-				break;
+			if (findingGame) {
+				if ((HWND)lParam == m_cancelButton) {
+					network->leaveMatchmakingQueue();
+					SendMessage(m_hwnd, CA_SHOWMAIN, SW_SHOW, NULL);
+					ShowWindow(m_cancelButton, SW_HIDE);
+					findingGame = false;
+					
+				}
 			}
-			else if ((HWND)lParam == m_findGameButton) {
-				network->joinMatchmakingQueue();
+			else{
+				if ((HWND)lParam == m_exitButton) {
+					PostQuitMessage(0);
+				}
+				else if ((HWND)lParam == m_findGameButton) {
+					findingGame = network->joinMatchmakingQueue();
+					if (findingGame) {
+						SendMessage(m_hwnd, CA_SHOWMAIN, SW_HIDE, NULL);
+						ShowWindow(m_cancelButton, SW_SHOW);						
+						findGameTimer = std::chrono::steady_clock::now();
+
+						InvalidateRect(m_cancelButton, NULL, false);
+
+						while (findingGame)
+						{
+							MSG msg;
+							if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+							{
+								if (msg.message == WM_QUIT ||
+									msg.message == WM_DESTROY ||
+									msg.message == WM_CLOSE)
+								{
+									findingGame = false;
+									PostQuitMessage(0);									
+									break;
+								}
+								TranslateMessage(&msg);
+								DispatchMessage(&msg);
+							}
+							else {
+								InvalidateRect(m_hwnd, NULL, false);
+								Sleep(1);
+							}
+						}
+					}
+				}				
 			}
 			break;
 		}
@@ -110,6 +180,31 @@ void MainWindow::onPaint() {
 		D2D1::RectF(32.0f, 32.0f, m_rect.right - 32.0f, 32.0f),
 		bBlack
 	);
+	
+	if (findingGame) {
+		pRenderTarget->DrawTextW(
+			L"searching for game...",
+			_countof(L"searching for game..."),
+			pMenuTextFormat,
+			D2D1::RectF(toPixels(32.0f), m_rect.bottom / 2 - toPixels(16.0f), m_rect.right - toPixels(32.0f), m_rect.bottom / 2 - toPixels(16.0f)),
+			bBlack
+		);
+
+		auto currentTime = std::chrono::steady_clock::now();
+		int elapsedSeconds = std::chrono::duration_cast<std::chrono::seconds>(currentTime - findGameTimer).count();
+		int elapsedMinutes = elapsedSeconds / 60; // Integer division so will round down
+		elapsedSeconds -= elapsedMinutes * 60; // Not equivelent to elapsedSeconds = 0 since elapsed minutes is rounded down.
+		wchar_t buff[16];
+		int length = swprintf_s(buff, L"%02d:%02d", elapsedMinutes, elapsedSeconds);
+
+		pRenderTarget->DrawTextW(
+			buff,
+			length,
+			pMenuTextFormat,
+			D2D1::RectF(toPixels(32.0f), m_rect.bottom / 2 + toPixels(16.0f), m_rect.right - toPixels(32.0f), m_rect.bottom / 2 + toPixels(16.0f)),
+			bBlack
+		);
+	}
 
 
 	//End Draw

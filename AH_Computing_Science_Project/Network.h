@@ -11,6 +11,7 @@ public:
 	bool startConnection(); // Connect to game coordinator
 	int logIn(bool newAccount, std::string username, std::string password);
 	bool joinMatchmakingQueue();
+	bool leaveMatchmakingQueue();
 	bool checkForGame();
 
 private:

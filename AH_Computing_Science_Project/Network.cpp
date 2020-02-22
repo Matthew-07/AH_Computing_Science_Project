@@ -60,7 +60,7 @@ bool Network::startConnection()
 	else {
 		addressFile.read(addr, 64);
 		addressFile.close();
-		MessageBoxA(NULL, addr, "msg", NULL);
+		//MessageBoxA(NULL, addr, "msg", NULL);
 	}
 
 	// Resolve the server address and port
@@ -76,7 +76,7 @@ bool Network::startConnection()
 	}
 	char buff[64];
 	inet_ntop(AF_INET6, result->ai_addr, buff, 64);
-	MessageBoxA(NULL, buff, "Server Ip", NULL);
+	//MessageBoxA(NULL, buff, "Server Ip", NULL);
 
 	m_GCSocket = INVALID_SOCKET;
 
@@ -185,8 +185,42 @@ bool Network::joinMatchmakingQueue()
 		return false;
 	}
 
+	bool validServer = false;
+	for (int s = 0; s < *buffer; s++) {
+		if (pingBuff[s] >= 0) {
+			validServer = true;
+		}
+	}
+
+	if (!validServer) {
+		MessageBoxA(NULL, "Connection to servers too poor.", "Error", NULL);
+		return false;
+	}
+
 	delete[] pingBuff, serverListBuffer;
 	delete buffer;
+
+	return true;
+}
+
+bool Network::leaveMatchmakingQueue()
+{
+	int32_t* buffer = new int32_t;
+	*buffer = LEAVE_QUEUE;
+	if (!sendData(m_GCSocket, (char*)buffer, sizeof(*buffer))) {
+		MessageBoxA(NULL, "Failed to send leave queue request.", "Error", NULL);
+		return false;
+	}
+
+	if (!recieveData(m_GCSocket, (char*)buffer, sizeof(*buffer))) {
+		MessageBoxA(NULL, "Failed to recieve leave queue responce.", "Error", NULL);
+		return false;
+	}
+
+	if (*buffer != 0) {
+		// A match has already been found
+		return false;
+	}
 
 	return true;
 }

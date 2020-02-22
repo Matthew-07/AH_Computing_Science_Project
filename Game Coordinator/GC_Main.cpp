@@ -14,7 +14,7 @@ int main() {
 		return 1;
 	}
 
-	std::cout << "\nint:" << myDatabase.addUser("test", "password") << std::endl;
+	myDatabase.addUser("test", "password");
 
 	std::cout << "Connected to database" << std::endl;
 	
