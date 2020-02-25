@@ -10,8 +10,10 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <list>
 #include <thread>
 #include <fstream>
 
-#pragma comment(lib, "Ws2_32.lib")
+const double PI = 3.14159265358979323846;
 
+#pragma comment(lib, "Ws2_32.lib")

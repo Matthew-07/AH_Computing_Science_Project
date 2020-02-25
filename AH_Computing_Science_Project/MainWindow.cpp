@@ -98,6 +98,9 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		if (wParam == SW_SHOW) {
 			windowShown = true;
+			if (lParam != NULL) {
+				m_userId = *(int32_t*)lParam;
+			}
 		}
 		else {
 			windowShown = false;
@@ -147,6 +150,9 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 							}
 							else {
 								InvalidateRect(m_hwnd, NULL, false);
+								if (network->checkForGame(m_userId)) {
+									findingGame = false;
+								}
 								Sleep(1);
 							}
 						}

@@ -24,9 +24,55 @@ bool Server::start()
 {
 	int iResult;
 
-	struct addrinfo* result = NULL,
-		* ptr = NULL,
-		hints;
+	// Get ready to accept clients
+	struct addrinfo* result = NULL, * ptr = NULL, hints;
+
+	ZeroMemory(&hints, sizeof(hints));
+	hints.ai_family = AF_INET6;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_flags = AI_PASSIVE;
+
+	// Resolve the local address and port to be used by the server
+	iResult = getaddrinfo(NULL, CLIENT_PORT_STRING, &hints, &result);
+	if (iResult != 0) {
+		printf("client getaddrinfo failed: %d\n\n", iResult);
+		WSACleanup();
+		return false;
+	}
+
+	m_UserListenSocket = INVALID_SOCKET;
+
+	// Create a SOCKET for the server to listen for client connections
+
+	m_UserListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+
+	if (m_UserListenSocket == INVALID_SOCKET) {
+		printf("Error at client socket(): %ld\n\n", WSAGetLastError());
+		freeaddrinfo(result);
+		WSACleanup();
+		return false;
+	}
+
+	// Setup the TCP listening socket
+	iResult = bind(m_UserListenSocket, result->ai_addr, (int)result->ai_addrlen);
+	if (iResult == SOCKET_ERROR) {
+		printf("client bind failed with error: %d\n\n", WSAGetLastError());
+		freeaddrinfo(result);
+		closesocket(m_UserListenSocket);
+		WSACleanup();
+		return false;
+	}
+
+	freeaddrinfo(result);
+
+	m_recievePacketsThread = new std::thread(&Server::recievePackets, this);
+	m_userConnectionsThread = new std::thread(&Server::userConnectionsThread, this);
+
+
+	// Connect to Game Coordinator
+	result = NULL;
+	ptr = NULL;
 
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
@@ -84,10 +130,7 @@ bool Server::start()
 		printf("Unable to connect to server!\n");
 		WSACleanup();
 		return 1;
-	}
-
-	m_recievePacketsThread = new std::thread([&]() {recievePackets(); });
-
+	}	
 
 	//std::string maxGamesText = MAXGAMESMSG + '\3';
 	const int BUFFER_LENGTH = 512;
@@ -134,13 +177,6 @@ bool Server::recievePackets()
 {
 	SOCKET s;
 	struct sockaddr_in6 server, si_other;
-	//struct addrinfo *result, hints;
-
-	//ZeroMemory(&hints, sizeof(hints));
-	//hints.ai_family = AF_INET6;
-	//hints.ai_socktype = SOCK_DGRAM;
-	//hints.ai_protocol = IPPROTO_UDP;
-	//hints.ai_flags = AI_PASSIVE;
 
 	int slen, recv_len;	
 
@@ -154,7 +190,6 @@ bool Server::recievePackets()
 	printf(" Socket created.\n ");
 
 	//Prepare the sockaddr_in structure
-	//getaddrinfo(NULL, CLIENT_PORT, &hints, &result);
 	memset(&server, 0, sizeof(server));
 	server.sin6_family = AF_INET6;
 	server.sin6_addr = in6addr_any;
@@ -162,23 +197,18 @@ bool Server::recievePackets()
 
 	//Bind
 	if (bind(s, (struct sockaddr*) &server, sizeof(server)) == SOCKET_ERROR)
-	//if (bind(s, result->ai_addr, result->ai_addrlen) == SOCKET_ERROR)
 	{
 		printf(" Bind failed with error code : % d ", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 
 	char buf[BUFFER_SIZE];
-	//keep listening for data
+
 	int counter = 0;
 	while (true)
 	{
-		//fflush(stdout);
-
-		//clear the buffer by filling null, it might have previously received data
 		memset(buf, 0, BUFFER_SIZE);
 
-		//try to receive some data, this is a blocking call
 		if ((recv_len = recvfrom(s, buf, BUFFER_SIZE, 0, (struct sockaddr*) &si_other, &slen)) == SOCKET_ERROR)
 		{
 			printf(" recvfrom() failed with error code : % d ", WSAGetLastError());
@@ -188,6 +218,7 @@ bool Server::recievePackets()
 		//print details of the client/peer and the data received
 		if (counter == 50) {
 			char* buff = new char[32];
+			ZeroMemory(buff, 32);
 			inet_ntop(AF_INET6, &si_other.sin6_addr, buff, 32);
 			printf(" Received packet from % s: % d\n ", buff, ntohs(si_other.sin6_port));
 			printf(" Data: % i\n ", *((int64_t*) buf));
@@ -209,5 +240,62 @@ bool Server::recievePackets()
 	WSACleanup();
 
 	return 0;
+	return false;
+}
+
+bool Server::gameThread(Logic& game)
+{
+	std::list<Input> playerInputs;
+
+	while (true) {
+		int result = game.tick(playerInputs);
+		if (result >= 0) {
+			// The game finished, team (result) won.
+		}
+		else if (result == -2) {
+			// The round ended but the game did not, wait a short while before the next game starts.
+		}
+	}
+	return false;
+}
+
+bool Server::userConnectionsThread()
+{
+	SOCKET ClientSocket;
+
+	while (true) {
+		if (listen(m_UserListenSocket, SOMAXCONN) == SOCKET_ERROR) {
+			printf("Listen failed with error: %ld\n\n", WSAGetLastError());
+			closesocket(m_UserListenSocket);
+			WSACleanup();
+			return false;
+		}
+
+		// Accept a client socket
+		ClientSocket = accept(m_UserListenSocket, NULL, NULL);
+		if (ClientSocket == INVALID_SOCKET) {
+			printf("accept failed: %d\n\n", WSAGetLastError());
+		}
+
+		m_userThreads.push_back(std::thread(&Server::userThread, this, (LPVOID)ClientSocket));
+	}
+
+	return true;
+}
+
+bool Server::userThread(LPVOID clientSocket)
+{
+	SOCKET userSocket = (SOCKET)clientSocket;
+
+	// First recieve userId;
+
+	int32_t userId = -1;
+	if (!recieveData(userSocket, (char*)&userId, 4)) {
+		closesocket(userSocket);
+		return false;
+	}
+
+	std::cout << "Player " << userId << " connected." << std::endl << std::endl;
+
 	return false;
 }

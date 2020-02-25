@@ -24,9 +24,19 @@ bool Network::init() {
 	ZeroMemory(&udpAddress, sizeof(udpAddress));
 	udpAddress.sin6_family = PF_INET6;
 	udpAddress.sin6_addr = in6addr_any;
-	udpAddress.sin6_port = htons(26532);
 
-	if (bind(m_udpSocket, (sockaddr*)&udpAddress, sizeof(udpAddress)) == SOCKET_ERROR) {
+	bool socketBound = false;
+
+	for (int port = 26532; port > 26520; port--) {
+		udpAddress.sin6_port = htons(port);
+
+		if (bind(m_udpSocket, (sockaddr*)&udpAddress, sizeof(udpAddress)) != SOCKET_ERROR) {			
+			socketBound = true;
+			break;
+		}
+	}
+
+	if (!socketBound) {
 		char buff[32];
 		sprintf_s(buff, "%i", WSAGetLastError());
 		OutputDebugStringA("Error: ");
@@ -225,8 +235,40 @@ bool Network::leaveMatchmakingQueue()
 	return true;
 }
 
+bool Network::checkForGame(int32_t& userId)
+{
+	fd_set recieveSocket;
+	FD_ZERO(&recieveSocket);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 100;
+
+	FD_SET(m_GCSocket, &recieveSocket);
+
+	if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+		return false;
+	}
+
+	if (FD_ISSET(m_GCSocket, &recieveSocket)) {
+		IN6_ADDR* ipBuff = new IN6_ADDR();
+
+		if (recieveData(m_GCSocket, (char*) ipBuff, sizeof(*ipBuff)) == SOCKET_ERROR) {
+			return false;
+		}
+
+		m_userId = userId;
+
+		if (joinGame(ipBuff))
+			return true;
+	}
+
+	return false;
+}
+
 bool Network::joinGame(in6_addr* serverAddress)
 {
+	MessageBox(NULL, L"Game Found!", L"Yay!", NULL);
+
 	// Setup TCP connection to server
 	SOCKET tcpServerSocket = INVALID_SOCKET;
 
@@ -243,10 +285,9 @@ bool Network::joinGame(in6_addr* serverAddress)
 	char addrStr[64];
 	ZeroMemory(addrStr, 64);
 	inet_pton(AF_INET6, addrStr, serverAddress);
-	int iResult = getaddrinfo(addrStr, COORDINATOR_PORT, &hints, &result);
-	//iResult = getaddrinfo("2a00:23c4:3149:e300:dcdb:f1c4:c76c:24f2", COORDINATOR_PORT, &hints, &result);
+	int iResult = getaddrinfo(addrStr, GAMESERVER_PORT, &hints, &result);
 	if (iResult != 0) {
-		std::string err("getaddrinfo failed with error: %d\n");
+		std::string err("getaddrinfo failed with error: %d");
 		char buff[64];
 		sprintf_s(buff, _countof(buff), err.c_str(), iResult);
 		MessageBoxA(NULL, buff, "Error", NULL);
@@ -291,12 +332,17 @@ bool Network::joinGame(in6_addr* serverAddress)
 		return false;
 	}
 
+	// Tell the server the userId.
+	if (!sendData(tcpServerSocket, (char*) &m_userId, 4)) {
+		return false;
+	}
+
 	// Create UDP socket for recieving datagrams.
 	SOCKET udpServerSocket = INVALID_SOCKET;
 
 
 
-
+	return true;
 }
 
 void Network::checkPings(in6_addr* addressBuffer, int64_t* avgPingBuffer, const int numberOfServers)

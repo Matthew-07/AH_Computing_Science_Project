@@ -118,7 +118,7 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				GetWindowTextA(m_passwordEdit, password, passwordLength);
 				std::string passwordStr(password);
 
-				int id;
+				int32_t id;
 
 				if (newAccountMode) {
 					/* Same as when false but there will be two password edits which must be equal to eachother
@@ -154,8 +154,8 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 				if (id > 0) {
 					// Login successful
-					SendMessage(m_parentHwnd, CA_SHOWMAIN, SW_SHOW, NULL);
-					ShowWindow(Window(), SW_HIDE);			
+					SendMessage(m_parentHwnd, CA_SHOWMAIN, SW_SHOW, (LPARAM) &id);
+					ShowWindow(Window(), SW_HIDE);
 				}
 				else {
 					if (newAccountMode) {

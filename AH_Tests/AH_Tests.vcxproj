@@ -177,6 +177,11 @@
     <None Include="Batch files\RUN_GSx1.bat" />
     <None Include="Batch files\RUN_GSx3.bat" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Game Server\Game Server.vcxproj">
+      <Project>{dc1cff62-621c-453c-bff1-c7c3a92a2827}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

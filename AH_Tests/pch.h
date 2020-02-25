@@ -8,5 +8,13 @@
 #define PCH_H
 
 // add headers that you want to pre-compile here
+//#include "..\Game Coordinator\Coordinator.h"
+//#include "..\Game Coordinator\Database.h"
+//
+//#include "..\AH_Computing_Science_Project\Network.h"
+//#include "..\AH_Computing_Science_Project\Graphics.h"
+
+#include "..\Game Server\Logic.h"
+//#include "..\Game Server\Server.h"
 
 #endif //PCH_H

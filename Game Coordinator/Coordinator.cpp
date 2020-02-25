@@ -1,6 +1,8 @@
 #include "Coordinator.h"
 #include "Database.h"
 
+std::mutex mtx;
+
 bool Coordinator::run()
 {
 	m_userConnectionsThread = new std::thread(&Coordinator::userConnectionsThread,this);
@@ -143,7 +145,7 @@ bool Coordinator::userConnectionsThread() {
 }
 
 bool Coordinator::gameServerConnectionsThread() {
-	SOCKET ClientSocket;
+	SOCKET ClientSocket;	
 
 	while (true) {
 		if (listen(m_GameServerListenSocket, SOMAXCONN) == SOCKET_ERROR) {
@@ -226,7 +228,7 @@ bool Coordinator::userThread(LPVOID lParam)
 	FD_ZERO(&recieveSocket);
 	timeval waitTime;
 	waitTime.tv_sec = 0;
-	waitTime.tv_usec = 1000;	
+	waitTime.tv_usec = 100;	
 
 	std::list<COMMAND> tasks;
 
@@ -235,26 +237,28 @@ bool Coordinator::userThread(LPVOID lParam)
 		FD_SET(userSocket, &recieveSocket);
 		if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
 			printf("Player %i disconnected.\n\n", *userId);
-			bool playerFound = false;
-			for (auto it : m_matchmakingQueue) {
-				if (it->id = *userId) {
-					it->shouldLeave = true;
-					playerFound = true;
+
+			mtx.lock();
+			std::list<Player*>::iterator it;
+			for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
+				if ((*it)->id = *userId) {
+					m_matchmakingQueue.erase(it);
 					break;
 				}
 			}
+			mtx.unlock();
 			closesocket(userSocket);
 
-			while (playerFound) {
-				if (tasks.size() > 0) {
-					if (tasks.front().type == COMM_LEAVE) {
-						return false;
-					}
-				}
-				else {
-					Sleep(100);
-				}
-			}
+			//while (playerFound) {
+			//	if (tasks.size() > 0) {
+			//		if (tasks.front().type == USER_LEAVE) {
+			//			return false;
+			//		}
+			//	}
+			//	else {
+			//		Sleep(100);
+			//	}
+			//}
 			return false;
 		}
 		if (FD_ISSET(userSocket, &recieveSocket)) {
@@ -263,32 +267,34 @@ bool Coordinator::userThread(LPVOID lParam)
 			{
 				// Connection lost
 				printf("Player %i disconnected.\n\n", *userId);
-				bool playerFound = false;
-				for (auto it : m_matchmakingQueue) {
-					if (it->id = *userId) {
-						it->shouldLeave = true;
-						playerFound = true;
+				mtx.lock();
+				std::list<Player*>::iterator it;
+				for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
+					if ((*it)->id = *userId) {
+						m_matchmakingQueue.erase(it);
 						break;
 					}
 				}
+				mtx.unlock();
 				closesocket(userSocket);
 
-				while (playerFound) {
-					if (tasks.size() > 0) {
-						if (tasks.front().type == COMM_LEAVE) {
-							return false;
-						}
-					}
-					else {
-						Sleep(100);
-					}
-				}
+				//while (playerFound) {
+				//	if (tasks.size() > 0) {
+				//		if (tasks.front().type == USER_LEAVE) {
+				//			return false;
+				//		}
+				//	}
+				//	else {
+				//		Sleep(100);
+				//	}
+				//}
 				return false;
 			}
 			// Respond to command
 			switch (*int32Buff) {
 			case JOIN_QUEUE:
 			{
+				mtx.lock();
 				*int32Buff = m_servers.size();
 
 				sendData(userSocket, (char*)int32Buff, sizeof(*int32Buff));
@@ -297,6 +303,8 @@ bool Coordinator::userThread(LPVOID lParam)
 					memcpy(addrBuff, server->ip, sizeof(in6_addr));
 					addrBuff++;
 				}
+				mtx.unlock();
+
 				addrBuff -= *int32Buff;
 				sendData(userSocket, (char*)addrBuff, (*int32Buff) * sizeof(in6_addr));
 
@@ -348,7 +356,10 @@ bool Coordinator::userThread(LPVOID lParam)
 					std::cout << str << ":\t" << pingBuff[a] << "\n";
 				}
 
+				mtx.lock();
 				m_matchmakingQueue.push_back(p);
+				mtx.unlock();
+
 				std::cout << std::endl;
 				break;
 			}
@@ -357,17 +368,20 @@ bool Coordinator::userThread(LPVOID lParam)
 				std::cout << "Player " << *userId << " requested to leave the matchmaking queue." << std::endl << std::endl;
 
 				bool playerFound = false;
-				for (auto it : m_matchmakingQueue) {
-					if (it->id = *userId) {
-						it->shouldLeave = true;
+				mtx.lock();
+				std::list<Player*>::iterator it;
+				for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
+					if ((*it)->id = *userId) {
+						m_matchmakingQueue.erase(it);
 						playerFound = true;
 						break;
 					}
 				}
+				mtx.unlock();
 				if (!playerFound) {
 					// Player was not in queue or a match was already found, doesn't matter.
 					int32_t buff = -1;
-					sendData(userSocket, (char*)&buff, 4);					
+					sendData(userSocket, (char*)&buff, 4);
 				}
 				break;
 			}
@@ -375,9 +389,11 @@ bool Coordinator::userThread(LPVOID lParam)
 		}
 
 		// Carry out any tasks required by other threads.
+		mtx.lock();
 		while (tasks.size() > 0) {
 			switch (tasks.front().type) {
-			case COMM_LEAVE:
+			case USER_LEAVE:
+			{
 				int32_t buff = 0;
 				sendData(userSocket, (char*)&buff, 4);
 				tasks.pop_front();
@@ -385,56 +401,60 @@ bool Coordinator::userThread(LPVOID lParam)
 				printf("Player %i left the queue.\n\n", *userId);
 				break;
 			}
+			case USER_NEWGAME:
+			{
+				sendData(userSocket, (char*)tasks.front().data, sizeof(*(IN6_ADDR*)tasks.front().data));
+				tasks.pop_front();
+				break;
+			}
+			}
 		}
+		mtx.unlock();
 	}
-	   
+
 	closesocket(userSocket);
 	return false;
 }
 
 bool Coordinator::gameServerThread(LPVOID lParam)
 {
-	/*
-
-	1. Wait for security key
-	2. Poll for information e.g. maximum number of games it will support concurrently
-	3. Add to list of available servers
-
-	*/
-
 	SOCKET serverSocket = (SOCKET)lParam;
 
-	// Test
-	const int buffLen = 32;
-	char recvBuff[buffLen];
+	std::list<COMMAND> tasks;
 
 	sockaddr_in6 s;
 	int nameSize = sizeof(s);
-	getpeername(serverSocket, (sockaddr*) &s, &nameSize);
+	getpeername(serverSocket, (sockaddr*)&s, &nameSize);
 
 	char serverAddrBuff[64];
 	inet_ntop(AF_INET6, &s.sin6_addr, serverAddrBuff, 64);
 	std::cout << "New server connected: " << serverAddrBuff << std::endl << std::endl;
 
-	//for (int i = 0; i < 5; i++) {
 	Server server;
 	server.ip = &s.sin6_addr;
 	server.socket = &serverSocket;
+	server.threadTasks = &tasks;
+
+	mtx.lock();
 	m_servers.push_back(&server);
-	//}
+	mtx.unlock();
+
+	fd_set recieveSocket;
+	FD_ZERO(&recieveSocket);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 100;
 
 	while (true) {
 
-		if (recieveData(serverSocket, recvBuff, buffLen)) {
-			std::string str = recvBuff;
-			//str.erase(std::find(str.begin(), str.end(), '\3'), str.end());
+		FD_SET(serverSocket, &recieveSocket);
 
-			std::cout << "Message Recieved: " << str << std::endl << std::endl;
-		}
-		else {
+		if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+			closesocket(serverSocket);
 			std::cout << "Connection lost" << std::endl << std::endl;
 			closesocket(serverSocket);
 
+			mtx.lock();
 			std::list<Server*>::iterator it;
 			for (it = m_servers.begin(); it != m_servers.end(); it++) {
 				if ((*it)->ip == &s.sin6_addr) {
@@ -442,9 +462,44 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 					break;
 				}
 			}
+			mtx.unlock();
 			return false;
 		}
+
+		if (FD_ISSET(serverSocket, &recieveSocket)) {
+			int32_t* int32Buff = new int32_t;
+			if (!recieveData(serverSocket, (char*)int32Buff, 4))
+			{
+				std::cout << "Connection lost" << std::endl << std::endl;
+				closesocket(serverSocket);
+
+				mtx.lock();
+				std::list<Server*>::iterator it;
+				for (it = m_servers.begin(); it != m_servers.end(); it++) {
+					if ((*it)->ip == &s.sin6_addr) {
+						m_servers.erase(it);
+						break;
+					}
+				}
+				mtx.unlock();
+				return false;
+			}
+			switch (*int32Buff) {
+			
+			}
+		}
+		mtx.lock();
+		while (tasks.size() > 0) {
+			switch (tasks.front().type) {			
+			case SERVER_NEWGAME:
+			{
+
+			}
+			}
+		}
+		mtx.unlock();
 	}
+	mtx.lock();
 	std::list<Server*>::iterator it;
 	for (it = m_servers.begin(); it != m_servers.end(); it++) {
 		if ((*it)->ip == &s.sin6_addr) {
@@ -452,6 +507,7 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 			break;
 		}
 	}
+	mtx.unlock();
 	return true;
 }
 
@@ -460,17 +516,23 @@ bool Coordinator::matchmakingThread()
 	std::list<Player*>::iterator playerA, playerB;
 	int maxPing = 120;
 	bool foundGame;
+	mtx.lock();
 	while (true) {
+		
+		mtx.unlock();
+		Sleep(2);
+		mtx.lock();
+		
 		if (m_matchmakingQueue.size() < 2) {
-			if (m_matchmakingQueue.size() == 1) {
+			/*if (m_matchmakingQueue.size() == 1) {				
 				if (m_matchmakingQueue.front()->shouldLeave) {
 					COMMAND c;
-					c.type = COMM_LEAVE;
+					c.type = USER_LEAVE;
 					m_matchmakingQueue.front()->threadTasks->push_back(c);
 					m_matchmakingQueue.pop_front();
 				}
 				Sleep(100);
-			}
+			}*/			
 		}
 		else {
 			/*
@@ -487,25 +549,25 @@ bool Coordinator::matchmakingThread()
 					// Try to match players in a game.
 
 					// If playerA wants to leave the queue
-					if ((*playerA)->shouldLeave) {
-						COMMAND c;
-						c.type = COMM_LEAVE;
-						(*playerA)->threadTasks->push_back(c);
-						delete (*playerA);
-						m_matchmakingQueue.erase(playerA++);						
-						break; // Need new playerA
-					}
+					//if ((*playerA)->shouldLeave) {
+					//	COMMAND c;
+					//	c.type = USER_LEAVE;
+					//	(*playerA)->threadTasks->push_back(c);
+					//	delete (*playerA);
+					//	m_matchmakingQueue.erase(playerA++);						
+					//	break; // Need new playerA
+					//}
 
-					// If playerB wants to leave the queue
-					if ((*playerB)->shouldLeave) {
-						COMMAND c;
-						c.type = COMM_LEAVE;
-						(*playerB)->threadTasks->push_back(c);
-						delete (*playerB);
-						m_matchmakingQueue.erase(playerB++);
-						
-						continue; // Need a new playerB
-					}
+					//// If playerB wants to leave the queue
+					//if ((*playerB)->shouldLeave) {
+					//	COMMAND c;
+					//	c.type = USER_LEAVE;
+					//	(*playerB)->threadTasks->push_back(c);
+					//	delete (*playerB);
+					//	m_matchmakingQueue.erase(playerB++);
+					//	
+					//	continue; // Need a new playerB
+					//}
 
 					// Now try to put them in a game.
 					// For now, all that is needed a server which they both have a low ping with.
@@ -555,25 +617,30 @@ bool Coordinator::matchmakingThread()
 									sendData(*(*serverIt)->socket, (char *) buff, sizeof(*buff));									
 
 									// Send info about the game
-									delete buff;
+									delete[] buff;
 									buff = new int32_t[2];
 									buff[0] = (*playerA)->id;
 									buff[1] = (*playerB)->id;
 									sendData(*(*serverIt)->socket, (char*)buff, sizeof(buff[0]) * 2);
 
-									//// WaserverIt for server to confirm serverIt is ready
-									//delete[2] buff;
-									//buff = new int32_t;
-									//*buff = 0;
-									//while (*buff != SERVER_READY) {
-									//	if (recieveData(*(*serverIt)->socket, (char*)buff, sizeof(*buff)) == SOCKET_ERROR) {
-									//		break; // TODO handle this
-									//	}
-									//}									
-
-									// Notify players they have been found a game.
+									// Notify server about the game
 									COMMAND c;
-									c.type = COMM_NEWGAME;
+
+									GAME game;
+									game.numberOfPlayers = 2;
+									game.userIds = new int32_t[2];
+									game.userIds[0] = (*playerA)->id;
+									game.userIds[1] = (*playerB)->id;
+									game.teams = new int32_t[2];
+									game.teams[0] = 1;
+									game.teams[1] = 2;
+									c.type = SERVER_NEWGAME;
+									c.data = &game;
+
+									(*serverIt)->threadTasks->push_back(c);
+
+									// Notify players they have been found a game.									
+									c.type = USER_NEWGAME;
 									c.data = (*serverIt)->ip;
 									(*playerA)->threadTasks->push_back(c);
 									(*playerB)->threadTasks->push_back(c);
@@ -600,7 +667,7 @@ bool Coordinator::matchmakingThread()
 				if (foundGame) break;
 				++playerA;
 			}
-		}
+		}		
 	}
 	return false;
 }

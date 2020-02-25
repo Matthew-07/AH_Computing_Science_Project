@@ -2,13 +2,28 @@
 
 #include "GC_pch.h"
 
-#define COMM_LEAVE		00001
-#define COMM_NEWGAME	00002
+#define USER_LEAVE		00001
+#define USER_NEWGAME	00002
+
+#define SERVER_NEWGAME	10001
 
 // Stores data for internal commands
 struct COMMAND {
+public:
 	int32_t type;
 	void* data; // Store information to be used with the command
+};
+
+// Stores information about a newly created game
+struct GAME {
+public:
+	int32_t* userIds;
+	int32_t* teams;
+	int numberOfPlayers;
+
+	~GAME() {
+		delete[] userIds, teams;
+	}
 };
 
 // Used for storing information about the latency between a player and server.
@@ -20,7 +35,7 @@ public:
 	Connection(in6_addr id, int32_t p) {
 		serverIP = id;
 		ping = p;
-	}
+	}	
 };
 
 // Store information about each player in queue to find a game
@@ -34,15 +49,18 @@ public:
 		pings.push_back(Connection(ip, ping));
 	}
 
-	bool shouldLeave = false;
+	//bool shouldLeave = false;
 
 	std::list<COMMAND>* threadTasks;
 	//void* info;
 };
 
 struct Server {
+public:
 	in_addr6* ip;
 	SOCKET* socket;
+
+	std::list<COMMAND>* threadTasks;
 };
 
 class Database;
@@ -80,5 +98,5 @@ private:
 
 	std::list<Server*>			m_servers;
 
-	Database *m_db = NULL;
+	Database *m_db = NULL;	
 };

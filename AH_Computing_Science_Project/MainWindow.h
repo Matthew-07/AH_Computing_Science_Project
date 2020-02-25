@@ -13,6 +13,10 @@ public:
 	MainWindow(Graphics * graphics, Network* nw);
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	void SetLogInHandle(HWND hWnd) { m_logInHandle = hWnd; }
+
+	void setUserId(int32_t& id) {
+		m_userId = id;
+	}
 private:
 	PCWSTR ClassName() const;
 	WCHAR m_className[MAX_LOADSTRING];
@@ -38,6 +42,8 @@ private:
 
 	bool findingGame = false;
 	std::chrono::steady_clock::time_point findGameTimer;
+
+	int32_t m_userId;
 
 };
 
