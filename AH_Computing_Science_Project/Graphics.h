@@ -7,6 +7,7 @@
 // Tell compiler that the window classes exists
 class MainWindow;
 class LogInWindow;
+class GameWindow;
 
 // Class for handling graphics
 class Graphics {
@@ -27,6 +28,7 @@ private:
 
 	MainWindow * w_main = NULL;
 	LogInWindow* w_logIn = NULL;
+	GameWindow* w_game = NULL;
 
 	HINSTANCE m_inst;
 

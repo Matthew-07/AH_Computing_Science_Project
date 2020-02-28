@@ -13,6 +13,7 @@ public:
 	MainWindow(Graphics * graphics, Network* nw);
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	void SetLogInHandle(HWND hWnd) { m_logInHandle = hWnd; }
+	void SetGameWindowHandle(HWND hWnd) { m_gameWindowHandle = hWnd; }
 
 	void setUserId(int32_t& id) {
 		m_userId = id;
@@ -21,7 +22,7 @@ private:
 	PCWSTR ClassName() const;
 	WCHAR m_className[MAX_LOADSTRING];
 
-	HWND m_logInHandle = NULL;
+	HWND m_logInHandle = NULL, m_gameWindowHandle = NULL;
 
 	void onPaint();
 	void createGraphicResources();

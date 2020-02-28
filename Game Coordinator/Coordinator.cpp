@@ -493,7 +493,19 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 			switch (tasks.front().type) {			
 			case SERVER_NEWGAME:
 			{
+				int32_t buff;
+				buff = START_GAME;
+				sendData(serverSocket, (char*)&buff, 4);
 
+				buff = reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers;
+				sendData(serverSocket, (char*)&buff, 4);
+
+				int32_t numberOfTeams = reinterpret_cast<GAME*>(tasks.front().data)->numberOfTeams;
+				sendData(serverSocket, (char*)&buff, 4);
+
+				sendData(serverSocket, (char*)reinterpret_cast<GAME*>(tasks.front().data)->userIds, reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
+
+				sendData(serverSocket, (char*)reinterpret_cast<GAME*>(tasks.front().data)->teams, reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
 			}
 			}
 		}
@@ -628,12 +640,13 @@ bool Coordinator::matchmakingThread()
 
 									GAME game;
 									game.numberOfPlayers = 2;
+									game.numberOfTeams = 2;
 									game.userIds = new int32_t[2];
 									game.userIds[0] = (*playerA)->id;
 									game.userIds[1] = (*playerB)->id;
 									game.teams = new int32_t[2];
-									game.teams[0] = 1;
-									game.teams[1] = 2;
+									game.teams[0] = 0;
+									game.teams[1] = 1;
 									c.type = SERVER_NEWGAME;
 									c.data = &game;
 

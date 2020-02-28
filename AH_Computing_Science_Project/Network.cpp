@@ -340,7 +340,44 @@ bool Network::joinGame(in6_addr* serverAddress)
 	// Create UDP socket for recieving datagrams.
 	SOCKET udpServerSocket = INVALID_SOCKET;
 
+	udpServerSocket = socket(AF_INET6, SOCK_DGRAM, 0);
+	if (udpServerSocket == SOCKET_ERROR) {
+		MessageBoxA(NULL, "Failed to create UDP socket", "Error", NULL);
+		return false;
+	}
 
+	int reuse = 1;
+
+	if (setsockopt(udpServerSocket, SOL_SOCKET, SO_REUSEADDR,
+		(char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+		MessageBoxA(NULL, "Failed to create UDP socket", "Error", NULL);
+		closesocket(udpServerSocket);
+		return false;
+	}
+
+	SOCKADDR_IN6 addr;
+	ZeroMemory((char*)&addr, sizeof(addr));
+	addr.sin6_family = AF_INET6;
+	addr.sin6_port = htons(5555);;
+	addr.sin6_addr = in6addr_any;
+
+	if (bind(udpServerSocket, (struct sockaddr*) & addr, sizeof(addr))) {
+		MessageBoxA(NULL, "Failed to create UDP socket", "Error", NULL);
+		closesocket(udpServerSocket);
+		return false;
+	}
+
+	ipv6_mreq mreq;
+	InetPton(AF_INET6,L"225.1.1.1", &mreq.ipv6mr_multiaddr);
+	mreq.ipv6mr_interface = htonl(INADDR_ANY);
+	if (
+		setsockopt(
+			udpServerSocket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)
+		) < 0
+		) {
+		perror("setsockopt");
+		return 1;
+	}
 
 	return true;
 }

@@ -10,6 +10,8 @@
 #define UNICODE
 #endif
 
+#include <winsock2.h>
+
 #include <windows.h>
 
 #include <d2d1.h>
@@ -21,7 +23,9 @@
 #include <chrono>
 #include <thread>
 
-#include <winsock2.h>
+#include <list>
+#include <vector>
+
 #include <ws2tcpip.h>
 
 #include "../Game Coordinator/WinsockHelper.h"

@@ -20,6 +20,7 @@ public:
 	int32_t* userIds;
 	int32_t* teams;
 	int numberOfPlayers;
+	int numberOfTeams;
 
 	~GAME() {
 		delete[] userIds, teams;
@@ -49,10 +50,7 @@ public:
 		pings.push_back(Connection(ip, ping));
 	}
 
-	//bool shouldLeave = false;
-
 	std::list<COMMAND>* threadTasks;
-	//void* info;
 };
 
 struct Server {

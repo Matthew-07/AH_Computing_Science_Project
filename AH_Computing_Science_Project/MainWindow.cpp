@@ -75,6 +75,10 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			MoveWindow(m_logInHandle, m_rect.right / 2 - toPixels(256), toPixels(32) , toPixels(512), m_rect.bottom - toPixels(64), true);
 		}
 
+		if (m_gameWindowHandle != NULL) {
+			MoveWindow(m_gameWindowHandle, 0, 0, m_rect.right, m_rect.bottom, true);
+		}
+
 		MoveWindow(m_cancelButton, m_rect.right / 2 - toPixels(150), m_rect.bottom - toPixels(32 + 48), toPixels(300), toPixels(48), true);
 
 		break;

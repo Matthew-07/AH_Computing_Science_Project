@@ -57,15 +57,16 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 	}
 
 	for (int p = 0; p < m_numberOfPlayers; p++) {
-		if (m_players[p].isAlive) {
+		if (m_players[p].isAlive && m_players[p].data.stoneDuration == 0) {
 
+			// If stoneDuration > 0, the player can't move or be killed so this logic can be skipped entirely
 			m_players[p].oldPos[0] = m_players[p].data.pos[0];
 			m_players[p].oldPos[1] = m_players[p].data.pos[1];
 
 			calculateMovement(m_players[p].data.pos, m_players[p].data.targetPos, PLAYER_SPEED);
 
-			// Check if the player has been killed, the collision detection is not necessary if the player is invulnerable.
-			if (m_players[p].data.shieldDuration == 0 && m_players[p].data.stoneDuration == 0) {
+			// Check if the player has been killed, the collision detection for the shockwave is not necessary if the player is invulnerable.
+			if (m_players[p].data.shieldDuration) {
 
 				for (auto shockwave : m_shockwaves) {
 					if (calculateCollision(
@@ -81,22 +82,27 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 						}
 					}
 				}
+			}
 
-				for (auto dagger : m_daggers) {
-					if (calculateCollision(
-						m_players[p].oldPos,
-						m_players[p].data.pos,
-						dagger.oldPos,
-						dagger.data.pos,
-						DAGGER_COLLISION_SIZE
-					)) {
-						if (m_players[p].data.team != dagger.data.team) {
-							m_players[p].isAlive = false;
-							break;
+			for (auto dagger : m_daggers) {
+				if (calculateCollision(
+					m_players[p].oldPos,
+					m_players[p].data.pos,
+					dagger.oldPos,
+					dagger.data.pos,
+					DAGGER_COLLISION_SIZE
+				)) {
+					if (m_players[p].data.id != dagger.data.targetId) {
+						if (m_players[p].data.shieldDuration == 0) {
+							m_players[p].isAlive = false;							
 						}
+						else {
+							dagger.data.targetId = dagger.data.senderId;
+							dagger.data.senderId = m_players[p].data.id;
+						}
+						break;
 					}
 				}
-
 			}
 
 			// If the player is still alive, reduce all active cooldowns and durations by 1.
@@ -157,7 +163,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 		int32_t index = getPlayerById(playerInputs.front().playerId);
 		switch (playerInputs.front().type) {			
 		case INP_MOVE:
-		{			
+		{
 			m_players[index].data.targetPos[0] = playerInputs.front().data[0];
 			m_players[index].data.targetPos[1] = playerInputs.front().data[1];
 			break;
@@ -205,6 +211,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				d.data.pos[1] = m_players[index].data.pos[1];
 
 				d.data.targetId = playerInputs.front().data[0];
+				d.data.senderId = playerInputs.front().playerId;
 
 				d.data.lifetime = 0;
 
@@ -306,28 +313,6 @@ void Logic::startRound()
 			m_players[p].data.cooldowns[c] = 0;
 		}
 	}
-}
-
-void Logic::calculateMovement(float *pos, float *targetPos, int32_t speed)
-{
-	float xDiff = targetPos[0] - pos[0];
-	float yDiff = targetPos[1] - pos[1];
-
-	float dist = sqrt(pow(xDiff, 2) + pow(yDiff, 2));
-
-	if (dist < speed) {
-		pos[0] = targetPos[0];
-		pos[1] = targetPos[1];
-		return;
-	}
-
-	pos[0] = xDiff / dist * speed;
-	pos[1] = yDiff / dist * speed;
-}
-
-float Logic::calculateDistance(float* point1, float* point2)
-{
-	return sqrt(pow(point2[0] - point1[0],2) + pow(point2[1] - point1[1],2));
 }
 
 bool Logic::calculateCollision(float* pos1, float* mov1, float* pos2, float* mov2, float maxDist)

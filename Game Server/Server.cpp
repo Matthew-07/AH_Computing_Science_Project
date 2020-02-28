@@ -100,25 +100,25 @@ bool Server::start()
 		return 1;
 	}
 
-	SOCKET ConnectSocket = INVALID_SOCKET;
+	SOCKET CoordinatorSocket = INVALID_SOCKET;
 
 	// Attempt to connect to an address until one succeeds
 	for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
 
 		// Create a SOCKET for connecting to server
-		ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype,
+		CoordinatorSocket = socket(ptr->ai_family, ptr->ai_socktype,
 			ptr->ai_protocol);
-		if (ConnectSocket == INVALID_SOCKET) {
+		if (CoordinatorSocket == INVALID_SOCKET) {
 			printf("socket failed with error: %ld\n", WSAGetLastError());
 			WSACleanup();
 			return 1;
 		}
 
 		// Connect to server.
-		iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+		iResult = connect(CoordinatorSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
 		if (iResult == SOCKET_ERROR) {
-			closesocket(ConnectSocket);
-			ConnectSocket = INVALID_SOCKET;
+			closesocket(CoordinatorSocket);
+			CoordinatorSocket = INVALID_SOCKET;
 			continue;
 		}
 		break;
@@ -126,46 +126,61 @@ bool Server::start()
 
 	freeaddrinfo(result);
 
-	if (ConnectSocket == INVALID_SOCKET) {
+	if (CoordinatorSocket == INVALID_SOCKET) {
 		printf("Unable to connect to server!\n");
 		WSACleanup();
 		return 1;
-	}	
-
-	//std::string maxGamesText = MAXGAMESMSG + '\3';
-	const int BUFFER_LENGTH = 512;
-	char sendBuff[BUFFER_LENGTH];
-	strcpy_s(sendBuff, BUFFER_LENGTH,"TEST");
-	//sendBuff = MAXGAMESMSG.c_str();
-	if (!sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff))) {
-		return false;
 	}
 
-	std::cout << "Sent " << (int)strlen(sendBuff) << " bytes." << std::endl;
-	
-	strcpy_s(sendBuff, BUFFER_LENGTH,"I am a server\n");
-	sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff));
+	fd_set recieveSocket;
+	FD_ZERO(&recieveSocket);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 100;
+
+	int32_t int32Buff = -1;
 	while (true) {
+		FD_SET(CoordinatorSocket, &recieveSocket);
+
+		if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+			closesocket(CoordinatorSocket);			
+			return false;
+		}
+
+		if (FD_ISSET(CoordinatorSocket, &recieveSocket)) {
+			if (!recieveData(CoordinatorSocket, (char*) &int32Buff, 4)) {
+				std::cout << "Lost connection to game coordinator.";
+				closesocket(CoordinatorSocket);
+				return false;
+			}
+
+			switch (int32Buff) {
+			case START_GAME:
+				int32_t numberOfPlayers;
+				recieveData(CoordinatorSocket, (char*)&numberOfPlayers, 4);
+
+				int32_t numberOfTeams;
+				recieveData(CoordinatorSocket, (char*)&numberOfTeams, 4);
+
+				int32_t* playerIds = new int32_t[numberOfPlayers];
+				recieveData(CoordinatorSocket, (char*)playerIds, numberOfPlayers * 4);
+
+				int32_t* playerTeams = new int32_t[numberOfPlayers];
+				recieveData(CoordinatorSocket, (char*)playerTeams, numberOfPlayers * 4);
+
+				Logic logic = Logic(numberOfPlayers, numberOfTeams, playerIds, playerTeams);
+
+				Game newGame;
+				newGame.logic = &logic;
+				newGame.playerInputs = std::list<Input>();
+				newGame.players = std::list<ConnectedPlayer*>();
+
+				m_gameThreads.push_back(std::thread(&Server::gameThread, this, &newGame));
+				m_games.push_back(&newGame);
+			}
+		}
+
 		Sleep(10000);
-		//std::string sendStr;
-		//std::cout << "Message: ";
-
-		//char inputBuffer[512];
-		////std::cin.getline(inputBuffer, 512);
-
-		////sendStr = inputBuffer;
-		//sendStr = "Beep!\n";
-
-		//strcpy_s(sendBuff, BUFFER_LENGTH,sendStr.c_str());
-
-		//
-		//if (!sendData(ConnectSocket, sendBuff, (int)strlen(sendBuff))) {
-		//	break;
-		//}
-		//
-
-		//std::cout << "Sent " << (int)strlen(sendBuff) << " bytes." << std::endl;
-		//std::cout << WSAGetLastError << std::endl;
 	}
 
 	std::cout << "Connection Lost.";
@@ -243,17 +258,59 @@ bool Server::recievePackets()
 	return false;
 }
 
-bool Server::gameThread(Logic& game)
+bool Server::gameThread(Game* game)
 {
 	std::list<Input> playerInputs;
 
+	SOCKET s;
+	struct sockaddr_in6 server, si_other;
+
+	int slen, recv_len;
+
+	slen = sizeof(si_other);
+
+	//Create a socket
+	if ((s = socket(AF_INET6, SOCK_DGRAM, 0)) == INVALID_SOCKET)
+	{
+		printf(" Could not create socket : % d ", WSAGetLastError());
+	}
+	printf(" Socket created.\n ");
+
+	//Prepare the sockaddr_in structure
+	memset(&server, 0, sizeof(server));
+	server.sin6_family = AF_INET6;
+	server.sin6_addr = in6addr_any;
+	server.sin6_port = htons(GAME_PORT + game->logic->index);
+
+	//Bind
+	if (bind(s, (struct sockaddr*) & server, sizeof(server)) == SOCKET_ERROR)
+	{
+		printf(" Bind failed with error code : % d ", WSAGetLastError());
+		exit(EXIT_FAILURE);
+	}
+
+	fd_set recieveSocket;
+	FD_ZERO(&recieveSocket);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 0;
+
+	int buffSize = game->logic->getMaxGamestateSize();
+	char* buffer = new char[buffSize];
+
 	while (true) {
-		int result = game.tick(playerInputs);
+		int result = game->logic->tick(playerInputs);
 		if (result >= 0) {
 			// The game finished, team (result) won.
 		}
 		else if (result == -2) {
 			// The round ended but the game did not, wait a short while before the next game starts.
+			Sleep(4000);
+		}
+		else {
+			ZeroMemory(buffer, buffSize);
+			int gameStateSize = game->logic->getGamestate(buffer);
+			
 		}
 	}
 	return false;
@@ -296,6 +353,39 @@ bool Server::userThread(LPVOID clientSocket)
 	}
 
 	std::cout << "Player " << userId << " connected." << std::endl << std::endl;
+
+	Game* currentGame;
+
+	while (true) {
+		for (auto game : m_games) {
+			if (game->logic->checkForUser(userId)) {
+				ConnectedPlayer p;
+				p.socket = userSocket;
+				p.userId = userId;
+				game->players.push_back(&p);
+				currentGame = game;
+			}
+		}
+	}
+
+	// Send game info
+
+	//Input input;
+
+	//while (true) {
+	//	if (currentGame->gameEnded) {
+	//		//sendData();
+	//		closesocket(userSocket);
+	//		return false;
+	//	}
+
+	//	if (!recieveData(userSocket, (char*)&input, sizeof(input))) {
+	//		closesocket(userSocket);
+	//		return false;
+	//	}
+
+	//	currentGame->playerInputs.push_back(input);
+	//}
 
 	return false;
 }

@@ -28,7 +28,7 @@ public:
 	int32_t stoneDuration;
 
 	int32_t cooldowns[6];
-	int32_t id;
+	int32_t id;	
 	int32_t team;
 };
 
@@ -39,30 +39,33 @@ public:
 
 	float oldPos[2];
 
-	PlayerData data;
+	PlayerData data;	
 };
 
 struct ShockwaveData {
 	float pos[2];
 	float dest[2];
+
 	int32_t team;
 };
 
 struct Shockwave {
 	float oldPos[2];
-	ShockwaveData data;
+	ShockwaveData data;	
 };
 
 struct DaggerData {
 	float pos[2];
 	int32_t targetId;
-	int32_t team;
+	int32_t senderId;
 	int32_t lifetime;
+
+	int32_t team;
 };
 
 struct Dagger {
 	float oldPos[2];
-	DaggerData data;
+	DaggerData data;	
 };
 
 struct Input {
@@ -86,12 +89,23 @@ public:
 	// Fills the buffer with the gamestate and returns the amount of space used.
 	int32_t getGamestate(char * buffer); 
 
+	int32_t index;
+	bool checkForUser(int32_t userId) {
+		for (int p = 0; p < m_numberOfPlayers; p++) {
+			if (m_players[p].data.id == userId) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool join() {
+
+	}
 
 private:
 	void startRound();	
 
-	void calculateMovement(float* pos, float* targetPos, int32_t speed);
-	float calculateDistance(float* point1, float* point2);
 	bool calculateCollision(float* pos1, float* mov1, float* pos2, float* mov2, float maxDist);
 
 	int32_t getPlayerById(int32_t id);
@@ -106,34 +120,58 @@ private:
 	Player* m_players;
 
 	std::list<Shockwave> m_shockwaves;
-	std::list<Dagger> m_daggers;	
+	std::list<Dagger> m_daggers;
 };
 
-const int32_t MAX_SCORE = 15;
+inline void calculateMovement(float* pos, float* targetPos, int32_t speed)
+{
+	float xDiff = targetPos[0] - pos[0];
+	float yDiff = targetPos[1] - pos[1];
 
-const int32_t PLAYER_SPEED = 10;
+	float dist = sqrt(pow(xDiff, 2) + pow(yDiff, 2));
 
-const int32_t SHOCKWAVE_SPEED = 50;
-const int32_t SHOCKWAVE_RANGE = 1000;
-const int32_t SHOCKWAVE_COLLISION_SIZE = 100;
-const int32_t SHOCKWAVE_COOLDOWN = 80;
+	if (dist < speed) {
+		pos[0] = targetPos[0];
+		pos[1] = targetPos[1];
+		return;
+	}
+
+	pos[0] = xDiff / dist * speed;
+	pos[1] = yDiff / dist * speed;
+}
+
+inline float calculateDistance(float* point1, float* point2)
+{
+	return sqrt(pow(point2[0] - point1[0], 2) + pow(point2[1] - point1[1], 2));
+}
+
+const int32_t	TICKS_PER_SECOND = 64;
+
+const int32_t	MAX_SCORE = 15;
+
+const float	PLAYER_SPEED = 10;
+
+const float	SHOCKWAVE_SPEED = 50;
+const int32_t	SHOCKWAVE_RANGE = 1000;
+const int32_t	SHOCKWAVE_COLLISION_SIZE = 35;
+const int32_t	SHOCKWAVE_COOLDOWN = 80;
 // A shockwave takes range/speed time to finish and can at most be produced once every cooldown ticks.
-const int32_t MAX_SHOCKWAVES = ceil(SHOCKWAVE_RANGE / SHOCKWAVE_SPEED / SHOCKWAVE_COOLDOWN);
+const int32_t	MAX_SHOCKWAVES = ceil(SHOCKWAVE_RANGE / SHOCKWAVE_SPEED / SHOCKWAVE_COOLDOWN);
 
-const int32_t DAGGER_SPEED = 35;
-const int32_t DAGGER_RANGE = 800;
-const int32_t DAGGER_MAX_LIFETIME = 600;
-const int32_t DAGGER_COLLISION_SIZE = 30;
-const int32_t DAGGER_COOLDOWN = 100;
-const int32_t MAX_DAGGERS = DAGGER_MAX_LIFETIME / DAGGER_COOLDOWN;
+const float		DAGGER_SPEED = 35;
+const int32_t	DAGGER_RANGE = 800;
+const int32_t	DAGGER_MAX_LIFETIME = 600;
+const int32_t	DAGGER_COLLISION_SIZE = 20;
+const int32_t	DAGGER_COOLDOWN = 100;
+const int32_t	MAX_DAGGERS = DAGGER_MAX_LIFETIME / DAGGER_COOLDOWN;
 
-const int32_t SHIELD_DURATION = 6;
-const int32_t SHIELD_COOLDOWN = 80;
+const int32_t	SHIELD_DURATION = 6;
+const int32_t	SHIELD_COOLDOWN = 80;
 
-const int32_t BLINK_COOLDOWN = 60;
+const int32_t	BLINK_COOLDOWN = 60;
 
-const int32_t STONE_DURATION = 150;
-const int32_t STONE_COOLDOWN = 300;
+const int32_t	STONE_DURATION = 150;
+const int32_t	STONE_COOLDOWN = 300;
 
 /* Tasks per tick:
 

@@ -1,6 +1,7 @@
 #include "Graphics.h"
 #include "MainWindow.h"
 #include "LogInWindow.h"
+#include "GameWindow.h"
 
 Graphics::Graphics(Network * nw) : pFactory(NULL), m_appName(L"") {
 	m_inst = NULL;
@@ -77,7 +78,14 @@ bool Graphics::createMainWindow(int nCmdShow) {
 		return false;
 	}
 
+	w_game = new GameWindow(this, network);
+
+	if (!w_game->Create(L"LOGIN", WS_CHILD | WS_CLIPCHILDREN, 0UL, 0, 0, 0, 0, w_main->Window())) {
+		return false;
+	}
+
 	w_main->SetLogInHandle(w_logIn->Window());
+	w_main->SetGameWindowHandle(w_game->Window());
 
 	ShowWindow(w_main->Window(), nCmdShow);
 
