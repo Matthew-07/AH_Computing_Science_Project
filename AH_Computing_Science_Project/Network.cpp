@@ -32,6 +32,7 @@ bool Network::init() {
 
 		if (bind(m_udpSocket, (sockaddr*)&udpAddress, sizeof(udpAddress)) != SOCKET_ERROR) {			
 			socketBound = true;
+			udpPort = port;
 			break;
 		}
 	}
@@ -265,12 +266,63 @@ bool Network::checkForGame(int32_t& userId)
 	return false;
 }
 
+bool Network::getGameInfo(int32_t* numberOfPlayers, int32_t* numberOfTeams, int32_t* playerIds, int32_t* playerTeams, int32_t* maxGamestateSize)
+{
+	if (!recieveData(m_tcpServerSocket, (char*)numberOfPlayers, 4)) {
+		return false;
+	}
+	if (!recieveData(m_tcpServerSocket, (char*)numberOfTeams, 4)) {
+		return false;
+	}
+	if (!recieveData(m_tcpServerSocket, (char*)playerIds, *numberOfPlayers * 4)) {
+		return false;
+	}
+	if (!recieveData(m_tcpServerSocket, (char*)playerTeams, *numberOfPlayers * 4)) {
+		return false;
+	}
+	if (!recieveData(m_tcpServerSocket, (char*)maxGamestateSize, 4)) {
+		return false;
+	}
+	maxSize = *maxGamestateSize;
+	return true;
+}
+
+bool Network::recievePacket(char* buffer)
+{
+	fd_set recieveSocket;
+	FD_ZERO(&recieveSocket);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 0;
+
+	FD_SET(m_udpSocket, &recieveSocket);
+
+	if (!select(0, &recieveSocket, NULL, NULL, &waitTime)) {
+		return false;
+	}
+
+	if (FD_ISSET(m_udpSocket, &recieveSocket)){
+		//int32_t intBuff;
+		//if (!recieveData(m_udpSocket, (char*)&intBuff, sizeof(intBuff))) {
+		//	return false;
+		//}
+		if (!recvfrom(m_udpSocket, buffer, maxSize, 0, NULL, NULL)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool Network::joinGame(in6_addr* serverAddress)
 {
-	MessageBox(NULL, L"Game Found!", L"Yay!", NULL);
+
+	/*if (m_tcpServerSocket != INVALID_SOCKET) {
+		closesocket(m_tcpServerSocket);
+	}*/
 
 	// Setup TCP connection to server
-	SOCKET tcpServerSocket = INVALID_SOCKET;
+	m_tcpServerSocket = INVALID_SOCKET;
 
 	struct addrinfo* result = NULL,
 		* ptr = NULL,
@@ -294,17 +346,14 @@ bool Network::joinGame(in6_addr* serverAddress)
 		WSACleanup();
 		return false;
 	}
-	char buff[64];
-	inet_ntop(AF_INET6, result->ai_addr, buff, 64);
-	MessageBoxA(NULL, buff, "Server Ip", NULL);
 
 	// Attempt to connect to an address until one succeeds
 	for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
 
 		// Create a SOCKET for connecting to server
-		tcpServerSocket = socket(ptr->ai_family, ptr->ai_socktype,
+		m_tcpServerSocket = socket(ptr->ai_family, ptr->ai_socktype,
 			ptr->ai_protocol);
-		if (tcpServerSocket == INVALID_SOCKET) {
+		if (m_tcpServerSocket == INVALID_SOCKET) {
 			char buff[512];
 			sprintf_s(buff, "Failed to connect to server with error: %i", WSAGetLastError());
 			MessageBoxA(NULL, buff, "Error", NULL);
@@ -313,10 +362,10 @@ bool Network::joinGame(in6_addr* serverAddress)
 		}
 
 		// Connect to server.
-		iResult = connect(tcpServerSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+		iResult = connect(m_tcpServerSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
 		if (iResult == SOCKET_ERROR) {
-			closesocket(tcpServerSocket);
-			tcpServerSocket = INVALID_SOCKET;
+			closesocket(m_tcpServerSocket);
+			m_tcpServerSocket = INVALID_SOCKET;
 			continue;
 		}
 		break;
@@ -324,7 +373,7 @@ bool Network::joinGame(in6_addr* serverAddress)
 
 	freeaddrinfo(result);
 
-	if (tcpServerSocket == INVALID_SOCKET) {
+	if (m_tcpServerSocket == INVALID_SOCKET) {
 		char buff[512];
 		sprintf_s(buff, "Failed to connect to server with error: %i", WSAGetLastError());
 		MessageBoxA(NULL, buff, "Error", NULL);
@@ -333,51 +382,17 @@ bool Network::joinGame(in6_addr* serverAddress)
 	}
 
 	// Tell the server the userId.
-	if (!sendData(tcpServerSocket, (char*) &m_userId, 4)) {
+	if (!sendData(m_tcpServerSocket, (char*) &m_userId, 4)) {
 		return false;
 	}
 
-	// Create UDP socket for recieving datagrams.
-	SOCKET udpServerSocket = INVALID_SOCKET;
-
-	udpServerSocket = socket(AF_INET6, SOCK_DGRAM, 0);
-	if (udpServerSocket == SOCKET_ERROR) {
-		MessageBoxA(NULL, "Failed to create UDP socket", "Error", NULL);
+	// Tell the server the port to use for udp.
+	if (!sendData(m_tcpServerSocket, (char*)&udpPort, 4)) {
 		return false;
 	}
-
-	int reuse = 1;
-
-	if (setsockopt(udpServerSocket, SOL_SOCKET, SO_REUSEADDR,
-		(char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
-		MessageBoxA(NULL, "Failed to create UDP socket", "Error", NULL);
-		closesocket(udpServerSocket);
-		return false;
-	}
-
-	SOCKADDR_IN6 addr;
-	ZeroMemory((char*)&addr, sizeof(addr));
-	addr.sin6_family = AF_INET6;
-	addr.sin6_port = htons(5555);;
-	addr.sin6_addr = in6addr_any;
-
-	if (bind(udpServerSocket, (struct sockaddr*) & addr, sizeof(addr))) {
-		MessageBoxA(NULL, "Failed to create UDP socket", "Error", NULL);
-		closesocket(udpServerSocket);
-		return false;
-	}
-
-	ipv6_mreq mreq;
-	InetPton(AF_INET6,L"225.1.1.1", &mreq.ipv6mr_multiaddr);
-	mreq.ipv6mr_interface = htonl(INADDR_ANY);
-	if (
-		setsockopt(
-			udpServerSocket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)
-		) < 0
-		) {
-		perror("setsockopt");
-		return 1;
-	}
+	
+	int len = sizeof(m_serverAddr);
+	getpeername(m_tcpServerSocket, (sockaddr*)&m_serverAddr, &len);
 
 	return true;
 }

@@ -14,6 +14,8 @@ public:
 
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+	bool startGame();
+
 private:
 	PCWSTR ClassName() const;
 	WCHAR m_className[MAX_LOADSTRING];
@@ -43,6 +45,9 @@ private:
 	int32_t m_mapSize;
 	int32_t m_numberOfPlayers;
 	int32_t m_numberOfTeams;
+
+	int32_t* m_playerIds;
+	int32_t* m_playerTeams;
 
 	int32_t* m_teamScores;
 

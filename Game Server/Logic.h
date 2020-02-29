@@ -99,9 +99,10 @@ public:
 		return false;
 	}
 
-	bool join() {
-
-	}
+	int32_t getNumberOfPlayers() { return m_numberOfPlayers; }
+	int32_t getNumberOfTeams() { return m_numberOfTeams; }
+	int32_t* getPlayerIds() { return m_playerIds; }
+	int32_t* getPlayerTeams() { return m_playerTeams; }
 
 private:
 	void startRound();	
@@ -115,9 +116,13 @@ private:
 	int32_t m_numberOfPlayers;
 	int32_t m_numberOfTeams;
 
+	int32_t* m_playerIds, * m_playerTeams;
+
 	int32_t* m_teamScores;
 
 	Player* m_players;
+
+	int32_t tickNumber;
 
 	std::list<Shockwave> m_shockwaves;
 	std::list<Dagger> m_daggers;

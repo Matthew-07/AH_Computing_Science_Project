@@ -65,6 +65,40 @@ LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
+bool GameWindow::startGame()
+{
+	int32_t maxGamestateSize;
+
+	network->getGameInfo(&m_numberOfPlayers, &m_numberOfTeams, m_playerIds, m_playerTeams, &maxGamestateSize);
+
+	char *buff = new char[maxGamestateSize];
+
+	while (true)
+	{
+		MSG msg;
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			if (msg.message == WM_QUIT ||
+				msg.message == WM_DESTROY ||
+				msg.message == WM_CLOSE)
+			{
+				PostQuitMessage(0);
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		else {
+			if (network->recievePacket(buff)) {
+				packetTimer = std::chrono::steady_clock::now();
+			}
+			InvalidateRect(m_hwnd, NULL, false);
+		}
+	}
+	delete[] buff;
+	return false;
+}
+
 void GameWindow::onPaint() {
 	createGraphicResources();
 
@@ -185,6 +219,9 @@ void GameWindow::discardGraphicResources()
 
 void GameWindow::extractGamestate(char* packet)
 {
+	latestPacketNumber = *(int32_t*)packet;
+	packet += 4;
+
 	if (m_players != nullptr) {
 		delete[] m_players;
 	}

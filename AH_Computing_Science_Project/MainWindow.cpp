@@ -156,6 +156,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 								InvalidateRect(m_hwnd, NULL, false);
 								if (network->checkForGame(m_userId)) {
 									findingGame = false;
+									ShowWindow(m_gameWindowHandle, SW_SHOW);
 								}
 								Sleep(1);
 							}

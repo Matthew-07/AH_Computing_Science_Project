@@ -14,6 +14,8 @@
 struct ConnectedPlayer {
 	SOCKET socket;
 	int32_t userId;
+
+	sockaddr_in6 address;
 };
 
 struct Game {

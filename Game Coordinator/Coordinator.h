@@ -19,8 +19,8 @@ struct GAME {
 public:
 	int32_t* userIds;
 	int32_t* teams;
-	int numberOfPlayers;
-	int numberOfTeams;
+	int32_t numberOfPlayers;
+	int32_t numberOfTeams;
 
 	~GAME() {
 		delete[] userIds, teams;

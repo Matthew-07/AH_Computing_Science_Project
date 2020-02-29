@@ -19,40 +19,51 @@ Logic::Logic(int32_t numberOfPlayers, int32_t numberOfTeams, int32_t* playerIds,
 		m_players[p].data.team = playerTeams[p];
 	}
 
+	m_playerIds = playerIds;
+	m_playerTeams = playerTeams;
+
+	tickNumber = 0;
+
+	startRound();
+
 }
 
 int32_t Logic::tick(std::list<Input> &playerInputs)
 {
 	//1. Move players and projectiles and 2. TODO Check if any players were killed
 	// Daggers
-	std::list<Dagger>::iterator dagger = m_daggers.begin();
-	while (dagger != m_daggers.end()){
-		for (int p = 0; p < m_numberOfPlayers; p++) {
-			if (m_players[p].data.id == dagger->data.targetId) {
-				if (m_players[p].isAlive) {
+	if (m_daggers.size() > 0) {
+		std::list<Dagger>::iterator dagger = m_daggers.begin();
+		while (dagger != m_daggers.end()) {
+			for (int p = 0; p < m_numberOfPlayers; p++) {
+				if (m_players[p].data.id == dagger->data.targetId) {
+					if (m_players[p].isAlive) {
 
-					dagger->oldPos[0] = dagger->data.pos[0];
-					dagger->oldPos[1] = dagger->data.pos[1];
+						dagger->oldPos[0] = dagger->data.pos[0];
+						dagger->oldPos[1] = dagger->data.pos[1];
 
-					calculateMovement(dagger->data.pos, m_players[p].data.pos, DAGGER_SPEED);
+						calculateMovement(dagger->data.pos, m_players[p].data.pos, DAGGER_SPEED);
+					}
+					else {
+						m_daggers.erase(dagger++);
+					}
+					break;
 				}
-				else {
-					m_daggers.erase(dagger++);
-				}
-				break;
 			}
 		}
 	}
 
-	std::list<Shockwave>::iterator shockwave = m_shockwaves.begin();
-	while (shockwave != m_shockwaves.end()) {
+	if (m_shockwaves.size() > 0) {
+		std::list<Shockwave>::iterator shockwave = m_shockwaves.begin();
+		while (shockwave != m_shockwaves.end()) {
 
-		shockwave->oldPos[0] = shockwave->data.pos[0];
-		shockwave->oldPos[1] = shockwave->data.pos[1];
+			shockwave->oldPos[0] = shockwave->data.pos[0];
+			shockwave->oldPos[1] = shockwave->data.pos[1];
 
-		calculateMovement(shockwave->data.pos, shockwave->data.dest, SHOCKWAVE_SPEED);
-		if (shockwave->data.pos[0] == shockwave->data.dest[0]) {
-			m_shockwaves.erase(shockwave++);
+			calculateMovement(shockwave->data.pos, shockwave->data.dest, SHOCKWAVE_SPEED);
+			if (shockwave->data.pos[0] == shockwave->data.dest[0]) {
+				m_shockwaves.erase(shockwave++);
+			}
 		}
 	}
 
@@ -239,6 +250,8 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 		playerInputs.pop_front();
 	}
 
+	tickNumber++;
+
 	return -1;
 
 	//5. Send packet with the current gamestate to clients - done outside class using other methods.
@@ -249,12 +262,15 @@ int32_t Logic::getMaxGamestateSize() // The gamestate will not be larger than th
 	return m_numberOfPlayers * sizeof(Player)
 		+ m_numberOfPlayers * MAX_DAGGERS *  sizeof(Dagger)
 		+ m_numberOfPlayers * MAX_SHOCKWAVES * sizeof(Shockwave)
-		+ 12;
+		+ 16;
 }
 
 int32_t Logic::getGamestate(char* buffer)
 {
 	int32_t bytesWritten = 0;
+
+	*(int32_t*)(buffer) = tickNumber;
+	bytesWritten += 4; buffer += 4;
 
 	// Number of players
 	int32_t numberOfPlayers = 0;

@@ -503,9 +503,12 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 				int32_t numberOfTeams = reinterpret_cast<GAME*>(tasks.front().data)->numberOfTeams;
 				sendData(serverSocket, (char*)&buff, 4);
 
-				sendData(serverSocket, (char*)reinterpret_cast<GAME*>(tasks.front().data)->userIds, reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
+				sendData(serverSocket, (char*)reinterpret_cast<GAME*>(tasks.front().data)->userIds, 4 * reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
 
-				sendData(serverSocket, (char*)reinterpret_cast<GAME*>(tasks.front().data)->teams, reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
+				sendData(serverSocket, (char*)reinterpret_cast<GAME*>(tasks.front().data)->teams, 4 * reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
+
+				tasks.pop_front();
+				break;
 			}
 			}
 		}

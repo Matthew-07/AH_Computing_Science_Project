@@ -139,6 +139,7 @@ bool Server::start()
 	waitTime.tv_usec = 100;
 
 	int32_t int32Buff = -1;
+
 	while (true) {
 		FD_SET(CoordinatorSocket, &recieveSocket);
 
@@ -157,16 +158,16 @@ bool Server::start()
 			switch (int32Buff) {
 			case START_GAME:
 				int32_t numberOfPlayers;
-				recieveData(CoordinatorSocket, (char*)&numberOfPlayers, 4);
+				recieveData(CoordinatorSocket, (char*)&numberOfPlayers, sizeof(numberOfPlayers));
 
 				int32_t numberOfTeams;
-				recieveData(CoordinatorSocket, (char*)&numberOfTeams, 4);
+				recieveData(CoordinatorSocket, (char*)&numberOfTeams, sizeof(numberOfTeams));
 
 				int32_t* playerIds = new int32_t[numberOfPlayers];
-				recieveData(CoordinatorSocket, (char*)playerIds, numberOfPlayers * 4);
+				recieveData(CoordinatorSocket, (char*)playerIds, numberOfPlayers * sizeof(playerIds[0]));
 
 				int32_t* playerTeams = new int32_t[numberOfPlayers];
-				recieveData(CoordinatorSocket, (char*)playerTeams, numberOfPlayers * 4);
+				recieveData(CoordinatorSocket, (char*)playerTeams, numberOfPlayers * sizeof(playerTeams[0]));
 
 				Logic logic = Logic(numberOfPlayers, numberOfTeams, playerIds, playerTeams);
 
@@ -177,10 +178,9 @@ bool Server::start()
 
 				m_gameThreads.push_back(std::thread(&Server::gameThread, this, &newGame));
 				m_games.push_back(&newGame);
+				break;
 			}
 		}
-
-		Sleep(10000);
 	}
 
 	std::cout << "Connection Lost.";
@@ -262,7 +262,7 @@ bool Server::gameThread(Game* game)
 {
 	std::list<Input> playerInputs;
 
-	SOCKET s;
+	SOCKET udpSocket;
 	struct sockaddr_in6 server, si_other;
 
 	int slen, recv_len;
@@ -270,7 +270,7 @@ bool Server::gameThread(Game* game)
 	slen = sizeof(si_other);
 
 	//Create a socket
-	if ((s = socket(AF_INET6, SOCK_DGRAM, 0)) == INVALID_SOCKET)
+	if ((udpSocket = socket(AF_INET6, SOCK_DGRAM, 0)) == INVALID_SOCKET)
 	{
 		printf(" Could not create socket : % d ", WSAGetLastError());
 	}
@@ -283,22 +283,50 @@ bool Server::gameThread(Game* game)
 	server.sin6_port = htons(GAME_PORT + game->logic->index);
 
 	//Bind
-	if (bind(s, (struct sockaddr*) & server, sizeof(server)) == SOCKET_ERROR)
+	if (bind(udpSocket, (struct sockaddr*) & server, sizeof(server)) == SOCKET_ERROR)
 	{
 		printf(" Bind failed with error code : % d ", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 
-	fd_set recieveSocket;
-	FD_ZERO(&recieveSocket);
-	timeval waitTime;
-	waitTime.tv_sec = 0;
-	waitTime.tv_usec = 0;
-
 	int buffSize = game->logic->getMaxGamestateSize();
 	char* buffer = new char[buffSize];
 
-	while (true) {
+	while (game->players.size() < game->logic->getNumberOfPlayers()) {
+		Sleep(10);
+	}
+
+	Sleep(1000);
+
+	fd_set inputSockets;
+	FD_ZERO(&inputSockets);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 100;
+
+	auto lastTick = std::chrono::steady_clock::now();
+
+	auto timePerTick = std::chrono::microseconds(1000000 / TICKS_PER_SECOND);
+
+	while (true) {	
+		for (auto p : game->players) {
+			FD_SET(p->socket, &inputSockets);
+		}
+
+		if (select(0, &inputSockets, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+			return false;
+		}
+
+		for (auto p : game->players) {			
+			if (FD_ISSET(p->socket, &inputSockets)) {
+				Input input;
+				if (!recieveData(p->socket, (char*)&input, sizeof(input))) {
+					return false;
+				}
+				game->playerInputs.push_back(input);
+			}
+		}
+
 		int result = game->logic->tick(playerInputs);
 		if (result >= 0) {
 			// The game finished, team (result) won.
@@ -308,9 +336,16 @@ bool Server::gameThread(Game* game)
 			Sleep(4000);
 		}
 		else {
-			ZeroMemory(buffer, buffSize);
-			int gameStateSize = game->logic->getGamestate(buffer);
-			
+			if (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - lastTick) >= timePerTick) {
+				ZeroMemory(buffer, buffSize);
+				int gameStateSize = game->logic->getGamestate(buffer);
+
+				for (auto p : game->players) {
+					sendto(udpSocket, buffer, gameStateSize, 0, (sockaddr*)&p->address, sizeof(p->address));
+				}
+
+				auto lastTick = std::chrono::steady_clock::now();
+			}
 		}
 	}
 	return false;
@@ -356,36 +391,56 @@ bool Server::userThread(LPVOID clientSocket)
 
 	Game* currentGame;
 
-	while (true) {
+	int32_t udpPort = -1;
+	recieveData(userSocket, (char*)&udpPort, 4);
+
+	bool locatingGame = true;
+
+	while (locatingGame) {
+		Sleep(1);
 		for (auto game : m_games) {
 			if (game->logic->checkForUser(userId)) {
 				ConnectedPlayer p;
 				p.socket = userSocket;
 				p.userId = userId;
+				sockaddr_in6 addr;
+				int addrlen = sizeof(addr);
+				getpeername(userSocket, (sockaddr*) &addr, &addrlen);
+				addr.sin6_port = udpPort;
+				p.address = addr;
 				game->players.push_back(&p);
-				currentGame = game;
+				currentGame = game;	
+
+				locatingGame = false;
+				break;
 			}
-		}
+		}		
 	}
 
-	// Send game info
+	if (currentGame = nullptr) {
+		return false;
+	}
+	int32_t numberOfPlayers = currentGame->logic->getNumberOfPlayers();
+	int32_t numberOfTeams = currentGame->logic->getNumberOfTeams();
+	int32_t* playerIds = currentGame->logic->getPlayerIds();
+	int32_t* playerTeams = currentGame->logic->getPlayerTeams();
+	int32_t maxGamestateSize = currentGame->logic->getMaxGamestateSize();
 
-	//Input input;
-
-	//while (true) {
-	//	if (currentGame->gameEnded) {
-	//		//sendData();
-	//		closesocket(userSocket);
-	//		return false;
-	//	}
-
-	//	if (!recieveData(userSocket, (char*)&input, sizeof(input))) {
-	//		closesocket(userSocket);
-	//		return false;
-	//	}
-
-	//	currentGame->playerInputs.push_back(input);
-	//}
+	if (!sendData(userSocket, (char*)&numberOfPlayers, 4)) {
+		return false;
+	}
+	if (!sendData(userSocket, (char*)&numberOfTeams, 4)) {
+		return false;
+	}
+	if (!sendData(userSocket, (char*)playerIds, numberOfPlayers * 4)) {
+		return false;
+	}
+	if (!sendData(userSocket, (char*)playerTeams, numberOfPlayers * 4)) {
+		return false;
+	}
+	if (!sendData(userSocket, (char*)maxGamestateSize, 4)) {
+		return false;
+	}
 
 	return false;
 }
