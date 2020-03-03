@@ -58,8 +58,14 @@
     <CopyFileToFolders Include="createTable.sql">
       <Filter>SQL</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="addGame.sql" />
-    <CopyFileToFolders Include="addParticipant.sql" />
-    <CopyFileToFolders Include="addTeam.sql" />
+    <CopyFileToFolders Include="addGame.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="addParticipant.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="addTeam.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

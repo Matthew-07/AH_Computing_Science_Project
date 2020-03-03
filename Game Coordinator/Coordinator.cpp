@@ -452,7 +452,6 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 		if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
 			closesocket(serverSocket);
 			std::cout << "Connection lost" << std::endl << std::endl;
-			closesocket(serverSocket);
 
 			mtx.lock();
 			std::list<Server*>::iterator it;
@@ -493,19 +492,23 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 			switch (tasks.front().type) {			
 			case SERVER_NEWGAME:
 			{
-				int32_t buff;
-				buff = START_GAME;
-				sendData(serverSocket, (char*)&buff, 4);
+				int32_t buffer;
+				buffer = START_GAME;
+				sendData(serverSocket, (char*)&buffer, sizeof(buffer));
 
-				buff = reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers;
-				sendData(serverSocket, (char*)&buff, 4);
+				buffer = reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers;
+				sendData(serverSocket, (char*)&buffer, sizeof(buffer));
 
 				int32_t numberOfTeams = reinterpret_cast<GAME*>(tasks.front().data)->numberOfTeams;
-				sendData(serverSocket, (char*)&buff, 4);
+				sendData(serverSocket, (char*)&numberOfTeams, sizeof(int32_t));
 
-				sendData(serverSocket, (char*)reinterpret_cast<GAME*>(tasks.front().data)->userIds, 4 * reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
+				sendData(serverSocket, (char*)(reinterpret_cast<GAME*>(tasks.front().data)->userIds), sizeof(int32_t)* reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
 
-				sendData(serverSocket, (char*)reinterpret_cast<GAME*>(tasks.front().data)->teams, 4 * reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
+				sendData(serverSocket, (char*)(reinterpret_cast<GAME*>(tasks.front().data)->teams), sizeof(int32_t)* reinterpret_cast<GAME*>(tasks.front().data)->numberOfPlayers);
+				for (int i = 0; i < buffer; i++) {
+					std::cout << reinterpret_cast<GAME*>(tasks.front().data)->userIds[i] << '\t';
+					std::cout << reinterpret_cast<GAME*>(tasks.front().data)->teams[i] << std::endl;
+				}
 
 				tasks.pop_front();
 				break;
@@ -563,28 +566,6 @@ bool Coordinator::matchmakingThread()
 				while (playerB != m_matchmakingQueue.end()){
 					// Try to match players in a game.
 
-					// If playerA wants to leave the queue
-					//if ((*playerA)->shouldLeave) {
-					//	COMMAND c;
-					//	c.type = USER_LEAVE;
-					//	(*playerA)->threadTasks->push_back(c);
-					//	delete (*playerA);
-					//	m_matchmakingQueue.erase(playerA++);						
-					//	break; // Need new playerA
-					//}
-
-					//// If playerB wants to leave the queue
-					//if ((*playerB)->shouldLeave) {
-					//	COMMAND c;
-					//	c.type = USER_LEAVE;
-					//	(*playerB)->threadTasks->push_back(c);
-					//	delete (*playerB);
-					//	m_matchmakingQueue.erase(playerB++);
-					//	
-					//	continue; // Need a new playerB
-					//}
-
-					// Now try to put them in a game.
 					// For now, all that is needed a server which they both have a low ping with.
 					for (int s1 = 0; s1 < (*playerA)->pings.size(); s1++) {
 						if ((*playerA)->pings[s1].ping < 0 || (*playerA)->pings[s1].ping > 120) continue;
@@ -626,17 +607,6 @@ bool Coordinator::matchmakingThread()
 										(*playerB)->pings[s2].ping = -1;
 										continue;
 									}
-
-									int32_t* buff = new int32_t;
-									*buff = START_GAME;
-									sendData(*(*serverIt)->socket, (char *) buff, sizeof(*buff));									
-
-									// Send info about the game
-									delete[] buff;
-									buff = new int32_t[2];
-									buff[0] = (*playerA)->id;
-									buff[1] = (*playerB)->id;
-									sendData(*(*serverIt)->socket, (char*)buff, sizeof(buff[0]) * 2);
 
 									// Notify server about the game
 									COMMAND c;

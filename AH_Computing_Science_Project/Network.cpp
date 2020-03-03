@@ -1,5 +1,7 @@
 #include "Network.h"
 
+#include "../Game Server/Logic.h"
+
 bool Network::init() {
 	WSADATA wsaData;
 
@@ -266,7 +268,7 @@ bool Network::checkForGame(int32_t& userId)
 	return false;
 }
 
-bool Network::getGameInfo(int32_t* numberOfPlayers, int32_t* numberOfTeams, int32_t* playerIds, int32_t* playerTeams, int32_t* maxGamestateSize)
+bool Network::getGameInfo(int32_t* numberOfPlayers, int32_t* numberOfTeams, int32_t** playerIds, int32_t** playerTeams, int32_t* maxGamestateSize)
 {
 	if (!recieveData(m_tcpServerSocket, (char*)numberOfPlayers, 4)) {
 		return false;
@@ -274,10 +276,12 @@ bool Network::getGameInfo(int32_t* numberOfPlayers, int32_t* numberOfTeams, int3
 	if (!recieveData(m_tcpServerSocket, (char*)numberOfTeams, 4)) {
 		return false;
 	}
-	if (!recieveData(m_tcpServerSocket, (char*)playerIds, *numberOfPlayers * 4)) {
+	*playerIds = new int32_t[*numberOfPlayers];
+	if (!recieveData(m_tcpServerSocket, (char*)*playerIds, *numberOfPlayers * 4)) {
 		return false;
 	}
-	if (!recieveData(m_tcpServerSocket, (char*)playerTeams, *numberOfPlayers * 4)) {
+	*playerTeams = new int32_t[*numberOfPlayers];
+	if (!recieveData(m_tcpServerSocket, (char*)*playerTeams, *numberOfPlayers * 4)) {
 		return false;
 	}
 	if (!recieveData(m_tcpServerSocket, (char*)maxGamestateSize, 4)) {
@@ -293,22 +297,39 @@ bool Network::recievePacket(char* buffer)
 	FD_ZERO(&recieveSocket);
 	timeval waitTime;
 	waitTime.tv_sec = 0;
-	waitTime.tv_usec = 0;
+	waitTime.tv_usec = 1;
 
 	FD_SET(m_udpSocket, &recieveSocket);
 
-	if (!select(0, &recieveSocket, NULL, NULL, &waitTime)) {
+	if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+		int res = WSAGetLastError();
+		char buff[64];
+		_itoa_s(res, buff, 10);
+		OutputDebugStringA("Error: ");
+		OutputDebugStringA(buff);
+		OutputDebugStringA("\n");
+		MessageBoxA(NULL, "Failed to recieve packet.", "Error", NULL);
 		return false;
 	}
 
-	if (FD_ISSET(m_udpSocket, &recieveSocket)){
-		//int32_t intBuff;
-		//if (!recieveData(m_udpSocket, (char*)&intBuff, sizeof(intBuff))) {
-		//	return false;
-		//}
+	//if (FD_ISSET(m_udpSocket, &recieveSocket)){
+	//	//int32_t intBuff;
+	//	//if (!recieveData(m_udpSocket, (char*)&intBuff, sizeof(intBuff))) {
+	//	//	return false;
+	//	//}
 		if (!recvfrom(m_udpSocket, buffer, maxSize, 0, NULL, NULL)) {
 			return false;
 		}
+		return true;
+	//}
+
+	return false;
+}
+
+bool Network::sendInput(Input* i)
+{
+	if (!sendData(m_tcpServerSocket, (char*)i, sizeof(*i))) {
+		return false;
 	}
 
 	return true;

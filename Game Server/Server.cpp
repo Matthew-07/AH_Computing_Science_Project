@@ -169,12 +169,18 @@ bool Server::start()
 				int32_t* playerTeams = new int32_t[numberOfPlayers];
 				recieveData(CoordinatorSocket, (char*)playerTeams, numberOfPlayers * sizeof(playerTeams[0]));
 
+				std::cout << "Game data recieved." << std::endl;
+				std::cout << numberOfPlayers << std::endl << numberOfTeams << std::endl;
+				for (int i = 0; i < numberOfPlayers; i++) {
+					std::cout << "Player: " << playerIds[i] << ", Team: " << playerTeams[i] << std::endl;
+				}
+
 				Logic logic = Logic(numberOfPlayers, numberOfTeams, playerIds, playerTeams);
 
 				Game newGame;
 				newGame.logic = &logic;
 				newGame.playerInputs = std::list<Input>();
-				newGame.players = std::list<ConnectedPlayer*>();
+				newGame.players = std::list<ConnectedPlayer>();
 
 				m_gameThreads.push_back(std::thread(&Server::gameThread, this, &newGame));
 				m_games.push_back(&newGame);
@@ -292,9 +298,13 @@ bool Server::gameThread(Game* game)
 	int buffSize = game->logic->getMaxGamestateSize();
 	char* buffer = new char[buffSize];
 
+	game->mutex.lock();
 	while (game->players.size() < game->logic->getNumberOfPlayers()) {
+		game->mutex.unlock();
 		Sleep(10);
+		game->mutex.lock();
 	}
+	game->mutex.unlock();
 
 	Sleep(1000);
 
@@ -309,44 +319,51 @@ bool Server::gameThread(Game* game)
 	auto timePerTick = std::chrono::microseconds(1000000 / TICKS_PER_SECOND);
 
 	while (true) {	
+		game->mutex.lock();
 		for (auto p : game->players) {
-			FD_SET(p->socket, &inputSockets);
+			FD_SET(p.socket, &inputSockets);
 		}
 
 		if (select(0, &inputSockets, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+			game->mutex.unlock();
 			return false;
 		}
 
 		for (auto p : game->players) {			
-			if (FD_ISSET(p->socket, &inputSockets)) {
+			if (FD_ISSET(p.socket, &inputSockets)) {
 				Input input;
-				if (!recieveData(p->socket, (char*)&input, sizeof(input))) {
+				if (!recieveData(p.socket, (char*)&input, sizeof(input))) {
+					game->mutex.unlock();
 					return false;
 				}
 				game->playerInputs.push_back(input);
 			}
 		}
 
-		int result = game->logic->tick(playerInputs);
-		if (result >= 0) {
-			// The game finished, team (result) won.
-		}
-		else if (result == -2) {
-			// The round ended but the game did not, wait a short while before the next game starts.
-			Sleep(4000);
-		}
-		else {
-			if (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - lastTick) >= timePerTick) {
+		if (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - lastTick) >= timePerTick) {
+			int32_t result = game->logic->tick(playerInputs);
+			if (result >= 0) {
+				// The game finished, team (result) won.
+			}
+			else if (result == -2) {
+				// The round ended but the game did not, wait a short while before the next game starts.
+				Sleep(4000);
+			}
+			else {
 				ZeroMemory(buffer, buffSize);
 				int gameStateSize = game->logic->getGamestate(buffer);
 
 				for (auto p : game->players) {
-					sendto(udpSocket, buffer, gameStateSize, 0, (sockaddr*)&p->address, sizeof(p->address));
+					if (sendto(udpSocket, buffer, gameStateSize, 0, (sockaddr*)&p.address, sizeof(p.address)) == SOCKET_ERROR) {
+						int err = WSAGetLastError();
+						std::cout << "Failed to send packet with error: " << err << std::endl;
+					}
 				}
 
 				auto lastTick = std::chrono::steady_clock::now();
 			}
 		}
+		game->mutex.unlock();
 	}
 	return false;
 }
@@ -389,8 +406,6 @@ bool Server::userThread(LPVOID clientSocket)
 
 	std::cout << "Player " << userId << " connected." << std::endl << std::endl;
 
-	Game* currentGame;
-
 	int32_t udpPort = -1;
 	recieveData(userSocket, (char*)&udpPort, 4);
 
@@ -400,47 +415,59 @@ bool Server::userThread(LPVOID clientSocket)
 		Sleep(1);
 		for (auto game : m_games) {
 			if (game->logic->checkForUser(userId)) {
+
+				int32_t numberOfPlayers = game->logic->getNumberOfPlayers();
+				int32_t numberOfTeams = game->logic->getNumberOfTeams();
+				int32_t* playerIds = game->logic->getPlayerIds();
+				int32_t* playerTeams = game->logic->getPlayerTeams();
+				int32_t maxGamestateSize = 0;
+				maxGamestateSize = game->logic->getMaxGamestateSize();
+
+				if (!sendData(userSocket, (char*)&numberOfPlayers, 4)) {
+					std::cout << "Failed to send number of players." << std::endl;
+					closesocket(userSocket);
+					return false;
+				}
+				if (!sendData(userSocket, (char*)&numberOfTeams, 4)) {
+					std::cout << "Failed to send number of teams." << std::endl;
+					closesocket(userSocket);
+					return false;
+				}
+				if (!sendData(userSocket, (char*)playerIds, numberOfPlayers * 4)) {
+					std::cout << "Failed to send player Ids." << std::endl;
+					closesocket(userSocket);
+					return false;
+				}
+				if (!sendData(userSocket, (char*)playerTeams, numberOfPlayers * 4)) {
+					std::cout << "Failed to send player Teams." << std::endl;
+					closesocket(userSocket);
+					return false;
+				}
+				if (!sendData(userSocket, (char*)&maxGamestateSize, 4)) {
+					int res = WSAGetLastError();					
+					std::cout << "Failed to send maximum gamestate size." << std::endl;
+					std::cout << "Error: " << res << std::endl;
+					closesocket(userSocket);
+					return false;
+				}
+
 				ConnectedPlayer p;
 				p.socket = userSocket;
 				p.userId = userId;
 				sockaddr_in6 addr;
 				int addrlen = sizeof(addr);
 				getpeername(userSocket, (sockaddr*) &addr, &addrlen);
-				addr.sin6_port = udpPort;
+				addr.sin6_port = htons(udpPort);
 				p.address = addr;
-				game->players.push_back(&p);
-				currentGame = game;	
+				game->mutex.lock();
+				game->players.push_back(p);
+				game->mutex.unlock();
 
 				locatingGame = false;
 				break;
 			}
 		}		
-	}
+	}	
 
-	if (currentGame = nullptr) {
-		return false;
-	}
-	int32_t numberOfPlayers = currentGame->logic->getNumberOfPlayers();
-	int32_t numberOfTeams = currentGame->logic->getNumberOfTeams();
-	int32_t* playerIds = currentGame->logic->getPlayerIds();
-	int32_t* playerTeams = currentGame->logic->getPlayerTeams();
-	int32_t maxGamestateSize = currentGame->logic->getMaxGamestateSize();
-
-	if (!sendData(userSocket, (char*)&numberOfPlayers, 4)) {
-		return false;
-	}
-	if (!sendData(userSocket, (char*)&numberOfTeams, 4)) {
-		return false;
-	}
-	if (!sendData(userSocket, (char*)playerIds, numberOfPlayers * 4)) {
-		return false;
-	}
-	if (!sendData(userSocket, (char*)playerTeams, numberOfPlayers * 4)) {
-		return false;
-	}
-	if (!sendData(userSocket, (char*)maxGamestateSize, 4)) {
-		return false;
-	}
-
-	return false;
+	return true;
 }

@@ -157,6 +157,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 								if (network->checkForGame(m_userId)) {
 									findingGame = false;
 									ShowWindow(m_gameWindowHandle, SW_SHOW);
+									SendMessage(m_gameWindowHandle, CA_SHOWGAME,NULL,NULL);
 								}
 								Sleep(1);
 							}

@@ -42,6 +42,8 @@ private:
 	int32_t latestPacketNumber;
 	std::chrono::steady_clock::time_point packetTimer;
 
+	int32_t m_camX, m_camY;
+
 	int32_t m_mapSize;
 	int32_t m_numberOfPlayers;
 	int32_t m_numberOfTeams;
@@ -55,5 +57,7 @@ private:
 
 	std::list<ShockwaveData> m_shockwaves;
 	std::list<DaggerData> m_daggers;
+
+	bool packetRecieved = false;
 };
 

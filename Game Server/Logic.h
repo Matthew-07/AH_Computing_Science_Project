@@ -102,7 +102,7 @@ public:
 	int32_t getNumberOfPlayers() { return m_numberOfPlayers; }
 	int32_t getNumberOfTeams() { return m_numberOfTeams; }
 	int32_t* getPlayerIds() { return m_playerIds; }
-	int32_t* getPlayerTeams() { return m_playerTeams; }
+	int32_t* getPlayerTeams() { return m_playerTeams; }	
 
 private:
 	void startRound();	
@@ -154,16 +154,19 @@ const int32_t	TICKS_PER_SECOND = 64;
 
 const int32_t	MAX_SCORE = 15;
 
-const float	PLAYER_SPEED = 10;
+const float		PLAYER_SPEED = 50;
+const float		PLAYER_SPEED_PER_TICK = PLAYER_SPEED / TICKS_PER_SECOND;
 
-const float	SHOCKWAVE_SPEED = 50;
+const float		SHOCKWAVE_SPEED = 200;
+const float		SHOCKWAVE_SPEED_PER_TICK = SHOCKWAVE_SPEED / TICKS_PER_SECOND;
 const int32_t	SHOCKWAVE_RANGE = 1000;
 const int32_t	SHOCKWAVE_COLLISION_SIZE = 35;
 const int32_t	SHOCKWAVE_COOLDOWN = 80;
 // A shockwave takes range/speed time to finish and can at most be produced once every cooldown ticks.
 const int32_t	MAX_SHOCKWAVES = ceil(SHOCKWAVE_RANGE / SHOCKWAVE_SPEED / SHOCKWAVE_COOLDOWN);
 
-const float		DAGGER_SPEED = 35;
+const float		DAGGER_SPEED = 160;
+const float		DAGGER_SPEED_PER_TICK = DAGGER_SPEED / TICKS_PER_SECOND;
 const int32_t	DAGGER_RANGE = 800;
 const int32_t	DAGGER_MAX_LIFETIME = 600;
 const int32_t	DAGGER_COLLISION_SIZE = 20;

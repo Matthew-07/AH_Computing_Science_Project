@@ -20,9 +20,11 @@ struct ConnectedPlayer {
 
 struct Game {
 	Logic *logic;
-	std::list <ConnectedPlayer*> players;
+	std::list <ConnectedPlayer> players;
 	std::list <Input>	playerInputs;
 	bool gameEnded = false;
+
+	std::mutex mutex;
 };
 
 class Server {

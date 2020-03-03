@@ -5,6 +5,8 @@
 #define COORDINATOR_PORT "26535"
 #define GAMESERVER_PORT	"26533"
 
+struct Input;
+
 class Network
 {
 public:
@@ -15,8 +17,10 @@ public:
 	bool leaveMatchmakingQueue();
 	bool checkForGame(int32_t& userId);
 
-	bool getGameInfo(int32_t *numberOfPlayers, int32_t *numberOfTeams, int32_t* playerIds, int32_t* playerTeams, int32_t* maxGamestateSize);
+	bool getGameInfo(int32_t *numberOfPlayers, int32_t *numberOfTeams, int32_t** playerIds, int32_t** playerTeams, int32_t* maxGamestateSize);
 	bool recievePacket(char * buffer);
+
+	bool sendInput(Input* i);
 
 private:
 	SOCKET m_GCSocket, m_udpSocket;	

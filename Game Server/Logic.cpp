@@ -42,7 +42,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 						dagger->oldPos[0] = dagger->data.pos[0];
 						dagger->oldPos[1] = dagger->data.pos[1];
 
-						calculateMovement(dagger->data.pos, m_players[p].data.pos, DAGGER_SPEED);
+						calculateMovement(dagger->data.pos, m_players[p].data.pos, DAGGER_SPEED_PER_TICK);
 					}
 					else {
 						m_daggers.erase(dagger++);
@@ -60,7 +60,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 			shockwave->oldPos[0] = shockwave->data.pos[0];
 			shockwave->oldPos[1] = shockwave->data.pos[1];
 
-			calculateMovement(shockwave->data.pos, shockwave->data.dest, SHOCKWAVE_SPEED);
+			calculateMovement(shockwave->data.pos, shockwave->data.dest, SHOCKWAVE_SPEED_PER_TICK);
 			if (shockwave->data.pos[0] == shockwave->data.dest[0]) {
 				m_shockwaves.erase(shockwave++);
 			}
@@ -74,10 +74,10 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 			m_players[p].oldPos[0] = m_players[p].data.pos[0];
 			m_players[p].oldPos[1] = m_players[p].data.pos[1];
 
-			calculateMovement(m_players[p].data.pos, m_players[p].data.targetPos, PLAYER_SPEED);
+			calculateMovement(m_players[p].data.pos, m_players[p].data.targetPos, PLAYER_SPEED_PER_TICK);
 
 			// Check if the player has been killed, the collision detection for the shockwave is not necessary if the player is invulnerable.
-			if (m_players[p].data.shieldDuration) {
+			if (m_players[p].data.shieldDuration == 0 && m_shockwaves.size() > 0) {
 
 				for (auto shockwave : m_shockwaves) {
 					if (calculateCollision(
@@ -95,23 +95,25 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				}
 			}
 
-			for (auto dagger : m_daggers) {
-				if (calculateCollision(
-					m_players[p].oldPos,
-					m_players[p].data.pos,
-					dagger.oldPos,
-					dagger.data.pos,
-					DAGGER_COLLISION_SIZE
-				)) {
-					if (m_players[p].data.id != dagger.data.targetId) {
-						if (m_players[p].data.shieldDuration == 0) {
-							m_players[p].isAlive = false;							
+			if (m_daggers.size() > 0) {
+				for (auto dagger : m_daggers) {
+					if (calculateCollision(
+						m_players[p].oldPos,
+						m_players[p].data.pos,
+						dagger.oldPos,
+						dagger.data.pos,
+						DAGGER_COLLISION_SIZE
+					)) {
+						if (m_players[p].data.id != dagger.data.targetId) {
+							if (m_players[p].data.shieldDuration == 0) {
+								m_players[p].isAlive = false;
+							}
+							else {
+								dagger.data.targetId = dagger.data.senderId;
+								dagger.data.senderId = m_players[p].data.id;
+							}
+							break;
 						}
-						else {
-							dagger.data.targetId = dagger.data.senderId;
-							dagger.data.senderId = m_players[p].data.id;
-						}
-						break;
 					}
 				}
 			}
@@ -259,9 +261,9 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 
 int32_t Logic::getMaxGamestateSize() // The gamestate will not be larger than this
 {
-	return m_numberOfPlayers * sizeof(Player)
-		+ m_numberOfPlayers * MAX_DAGGERS *  sizeof(Dagger)
-		+ m_numberOfPlayers * MAX_SHOCKWAVES * sizeof(Shockwave)
+	return m_numberOfPlayers * sizeof(PlayerData)
+		+ m_numberOfPlayers * MAX_DAGGERS *  ((int32_t) sizeof(DaggerData))
+		+ m_numberOfPlayers * MAX_SHOCKWAVES * ((int32_t)sizeof(ShockwaveData))
 		+ 16;
 }
 
@@ -285,8 +287,8 @@ int32_t Logic::getGamestate(char* buffer)
 	// Player info
 	for (int p = 0; p < m_numberOfPlayers; p++) {
 		if (m_players[p].isAlive) {
-			* (Player*)(buffer) = m_players[p];
-			bytesWritten += sizeof(m_players[p]); buffer += sizeof(m_players[p]);
+			* (PlayerData*)(buffer) = m_players[p].data;
+			bytesWritten += sizeof(PlayerData); buffer += sizeof(PlayerData);
 		}
 	}	
 
@@ -294,18 +296,22 @@ int32_t Logic::getGamestate(char* buffer)
 	*(int32_t*)(buffer) = numberOfShockwaves;
 	bytesWritten += 4; buffer += 4;
 
-	for (auto shockwave : m_shockwaves) {
-		*(Shockwave*)(buffer) = shockwave;
-		bytesWritten += sizeof(shockwave); buffer += sizeof(shockwave);
+	if (m_shockwaves.size() > 0) {
+		for (auto shockwave : m_shockwaves) {
+			*(ShockwaveData*)(buffer) = shockwave.data;
+			bytesWritten += sizeof(ShockwaveData); buffer += sizeof(ShockwaveData);
+		}
 	}
 
 	int32_t numberOfDaggers = m_daggers.size();
 	*(int32_t*)(buffer) = numberOfDaggers;
 	bytesWritten += 4; buffer += 4;
 
-	for (auto dagger : m_daggers) {
-		*(Dagger*)(buffer) = dagger;
-		bytesWritten += sizeof(dagger); buffer += sizeof(dagger);
+	if (m_daggers.size() > 0) {
+		for (auto dagger : m_daggers) {
+			*(DaggerData*)(buffer) = dagger.data;
+			bytesWritten += sizeof(DaggerData); buffer += sizeof(DaggerData);
+		}
 	}
 
 	return bytesWritten;
@@ -370,6 +376,5 @@ int32_t Logic::getPlayerById(int32_t id)
 			return p;
 		}
 	}
-
 	return -1;
 }

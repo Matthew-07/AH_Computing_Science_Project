@@ -61,7 +61,39 @@ LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		InvalidateRect(m_hwnd, NULL, TRUE);
 		break;
 	}
+	case CA_SHOWGAME:
+	{
+		startGame();
+		break;
 	}
+	case WM_COMMAND:
+	{
+		switch (LOWORD(wParam)) {
+		case FUNC_SHIELD:
+			Input i;
+			i.type = INP_SHIELD;
+			i.playerId = userId;
+			network->sendInput(&i);
+			break;
+		}
+	}
+	case WM_MBUTTONDOWN:
+	{
+		if (wParam == 0x0002) {
+			float xPos = GET_X_LPARAM(lParam);
+			float yPos = GET_Y_LPARAM(lParam);
+
+			Input i;
+			i.type = INP_MOVE;
+			i.playerId = userId;
+			i.data[0] = xPos;
+			i.data[1] = yPos;
+			network->sendInput(&i);
+			break;
+		}
+	}
+	}
+	
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
@@ -69,9 +101,22 @@ bool GameWindow::startGame()
 {
 	int32_t maxGamestateSize;
 
-	network->getGameInfo(&m_numberOfPlayers, &m_numberOfTeams, m_playerIds, m_playerTeams, &maxGamestateSize);
+	if (!network->getGameInfo(&m_numberOfPlayers, &m_numberOfTeams, &m_playerIds, &m_playerTeams, &maxGamestateSize)) {
+
+		int res = WSAGetLastError();
+		char buff[64];
+		_itoa_s(res, buff, 10);
+		OutputDebugStringA("Error: ");
+		OutputDebugStringA(buff);
+		OutputDebugStringA("\n");
+
+		MessageBoxA(NULL, "Unable to retrieve game information.", "Error", NULL);
+		return false;
+	}
 
 	char *buff = new char[maxGamestateSize];
+
+	HACCEL hAccelTable = LoadAccelerators(m_inst, MAKEINTRESOURCE(IDR_ACCELERATOR1));
 
 	while (true)
 	{
@@ -85,17 +130,25 @@ bool GameWindow::startGame()
 				PostQuitMessage(0);
 				break;
 			}
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+
+			if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
 		}
 		else {
-			if (network->recievePacket(buff)) {
+			if (network->recievePacket(buff)) {				
 				packetTimer = std::chrono::steady_clock::now();
+				packetRecieved = true;
+
+				extractGamestate(buff);
 			}
 			InvalidateRect(m_hwnd, NULL, false);
 		}
 	}
 	delete[] buff;
+	packetRecieved = false;
 	return false;
 }
 
@@ -110,68 +163,80 @@ void GameWindow::onPaint() {
 
 	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(1.0f, 1.0f, 1.0f)));
 
-	// Draw Window
-	int32_t timeSinceLastPacket = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - packetTimer).count();
-	
-	// Only extrapolate for up to 500ms, then just draw the same frame until more data arrives
-	if (timeSinceLastPacket > 500000) {
-		timeSinceLastPacket = 500000;
-	}
+	// Don't draw the game until the first packet has been recieved.
+	if (packetRecieved) {
 
-	for (int p = 0; p < m_numberOfPlayers; p++) {
+		// Draw Window
+		float timeSinceLastPacket = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - packetTimer).count() / 1000000;
 
-		float newPos[2];
-		newPos[0] = m_players[p].pos[0];
-		newPos[1] = m_players[p].pos[1];
-		calculateMovement(newPos, m_players[p].targetPos, PLAYER_SPEED);
-
-		if (m_players[p].id == userId) {
-			pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(m_players[p].pos[0], m_players[p].pos[1]), 30, 30), bPlayer);
+		// Only extrapolate for up to 500ms, then just draw the same frame until more data arrives
+		if (timeSinceLastPacket > 0.5) {
+			timeSinceLastPacket = 0.5;
 		}
-		else {
-			pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(m_players[p].pos[0], m_players[p].pos[1]), 28, 28), teamBrushes[m_players[p].team]);
+
+		// Center camera on player while player is alive
+		for (int p = 0; p < m_numberOfPlayers; p++) {
+			if (m_players[p].id = userId) {
+				m_camX = m_players[p].pos[0] - m_rect.right / 2;
+				m_camX = m_players[p].pos[1] - m_rect.bottom / 2;
+			}
 		}
-	}
-
-	for (auto shockwave : m_shockwaves) {		
-
-		float newPos[2];
-		newPos[0] = shockwave.pos[0];
-		newPos[1] = shockwave.pos[1];
-		calculateMovement(newPos, shockwave.dest, PLAYER_SPEED);
-
-		if (shockwave.team = userTeam) {
-			//pRenderTarget->DrawLine();
-		}
-		else {
-			//pRenderTarget->DrawLine();
-		}
-	}
-
-	for (auto dagger : m_daggers) {
-
-		int32_t index = -1;
 
 		for (int p = 0; p < m_numberOfPlayers; p++) {
-			if (m_players[p].id == dagger.targetId) {
-				index = p;
-				break;
-			}
-		}
-		if (index >= 0) {
 
 			float newPos[2];
-			newPos[0] = dagger.pos[0];
-			newPos[1] = dagger.pos[1];
-			calculateMovement(newPos, m_players[index].pos, PLAYER_SPEED);
+			newPos[0] = m_players[p].pos[0];
+			newPos[1] = m_players[p].pos[1];
+			calculateMovement(newPos, m_players[p].targetPos, timeSinceLastPacket * PLAYER_SPEED);
 
-			if (dagger.team = userTeam) {
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dagger.pos[0], dagger.pos[1]), 8, 8), bProjectileAlly);
+			if (m_players[p].id == userId) {
+				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(m_players[p].pos[0] - m_camX, m_players[p].pos[1] - m_camY), 30, 30), bPlayer);
 			}
 			else {
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dagger.pos[0], dagger.pos[1]), 8, 8), bProjectileEnemy);
+				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(m_players[p].pos[0] - m_camX, m_players[p].pos[1] - m_camY), 28, 28), teamBrushes[m_players[p].team]);
 			}
+		}
 
+		for (auto shockwave : m_shockwaves) {
+
+			float newPos[2];
+			newPos[0] = shockwave.pos[0];
+			newPos[1] = shockwave.pos[1];
+			calculateMovement(newPos, shockwave.dest, timeSinceLastPacket * SHOCKWAVE_SPEED);
+
+			if (shockwave.team = userTeam) {
+				//pRenderTarget->DrawLine();
+			}
+			else {
+				//pRenderTarget->DrawLine();
+			}
+		}
+
+		for (auto dagger : m_daggers) {
+
+			int32_t index = -1;
+
+			for (int p = 0; p < m_numberOfPlayers; p++) {
+				if (m_players[p].id == dagger.targetId) {
+					index = p;
+					break;
+				}
+			}
+			if (index >= 0) {
+
+				float newPos[2];
+				newPos[0] = dagger.pos[0];
+				newPos[1] = dagger.pos[1];
+				calculateMovement(newPos, m_players[index].pos, timeSinceLastPacket * DAGGER_SPEED);
+
+				if (dagger.team = userTeam) {
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dagger.pos[0] - m_camX, dagger.pos[1] - m_camY), 8, 8), bProjectileAlly);
+				}
+				else {
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dagger.pos[0] - m_camX, dagger.pos[1] - m_camY), 8, 8), bProjectileEnemy);
+				}
+
+			}
 		}
 	}
 
