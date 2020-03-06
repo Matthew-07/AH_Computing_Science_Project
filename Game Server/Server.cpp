@@ -179,7 +179,6 @@ bool Server::start()
 
 				Game newGame;
 				newGame.logic = &logic;
-				newGame.playerInputs = std::list<Input>();
 				newGame.players = std::list<ConnectedPlayer>();
 
 				m_gameThreads.push_back(std::thread(&Server::gameThread, this, &newGame));
@@ -312,7 +311,7 @@ bool Server::gameThread(Game* game)
 	FD_ZERO(&inputSockets);
 	timeval waitTime;
 	waitTime.tv_sec = 0;
-	waitTime.tv_usec = 100;
+	waitTime.tv_usec = 5;
 
 	auto lastTick = std::chrono::steady_clock::now();
 
@@ -336,7 +335,7 @@ bool Server::gameThread(Game* game)
 					game->mutex.unlock();
 					return false;
 				}
-				game->playerInputs.push_back(input);
+				playerInputs.push_back(input);
 			}
 		}
 
@@ -360,7 +359,7 @@ bool Server::gameThread(Game* game)
 					}
 				}
 
-				auto lastTick = std::chrono::steady_clock::now();
+				lastTick = std::chrono::steady_clock::now();
 			}
 		}
 		game->mutex.unlock();

@@ -31,8 +31,8 @@ private:
 
 	void extractGamestate(char* packet);
 
-	int32_t userId;
-	int32_t userTeam;
+	int32_t m_userId;
+	int32_t m_userTeam;
 
 	ID2D1HwndRenderTarget* pRenderTarget;
 	ID2D1SolidColorBrush* bBlack, * bWhite, * bPlayer, * bProjectileEnemy, * bProjectileAlly;
@@ -42,10 +42,11 @@ private:
 	int32_t latestPacketNumber;
 	std::chrono::steady_clock::time_point packetTimer;
 
-	int32_t m_camX, m_camY;
+	float m_camX, m_camY;
 
 	int32_t m_mapSize;
 	int32_t m_numberOfPlayers;
+	int32_t m_maxNumberOfPlayers;
 	int32_t m_numberOfTeams;
 
 	int32_t* m_playerIds;

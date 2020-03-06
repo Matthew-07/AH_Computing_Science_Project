@@ -128,8 +128,12 @@ private:
 	std::list<Dagger> m_daggers;
 };
 
-inline void calculateMovement(float* pos, float* targetPos, int32_t speed)
+inline void calculateMovement(float* pos, float* targetPos, float speed)
 {
+	if (speed == 0) {
+		return;
+	}
+
 	float xDiff = targetPos[0] - pos[0];
 	float yDiff = targetPos[1] - pos[1];
 
@@ -141,14 +145,14 @@ inline void calculateMovement(float* pos, float* targetPos, int32_t speed)
 		return;
 	}
 
-	pos[0] = xDiff / dist * speed;
-	pos[1] = yDiff / dist * speed;
+	pos[0] += xDiff / dist * speed;
+	pos[1] += yDiff / dist * speed;
 }
 
-inline float calculateDistance(float* point1, float* point2)
-{
-	return sqrt(pow(point2[0] - point1[0], 2) + pow(point2[1] - point1[1], 2));
-}
+//inline float calculateDistance(float* point1, float* point2)
+//{
+//	return sqrt(pow(point2[0] - point1[0], 2) + pow(point2[1] - point1[1], 2));
+//}
 
 const int32_t	TICKS_PER_SECOND = 64;
 
@@ -180,6 +184,10 @@ const int32_t	BLINK_COOLDOWN = 60;
 
 const int32_t	STONE_DURATION = 150;
 const int32_t	STONE_COOLDOWN = 300;
+
+const int32_t	MAP_SIZE_PER_PLAYER = 100;
+const int32_t	MAP_SIZE_CONSTANT = 200;
+const int32_t	MAP_PLAYER_BORDER = 100;
 
 /* Tasks per tick:
 

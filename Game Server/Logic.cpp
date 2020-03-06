@@ -12,7 +12,7 @@ Logic::Logic(int32_t numberOfPlayers, int32_t numberOfTeams, int32_t* playerIds,
 	}
 
 	// At the moment completely arbitrary
-	m_mapSize = numberOfPlayers * 100 + 200;
+	m_mapSize = numberOfPlayers * MAP_SIZE_PER_PLAYER + MAP_SIZE_CONSTANT;
 
 	for (int p = 0; p < numberOfPlayers; p++) {
 		m_players[p].data.id = playerIds[p];
@@ -321,8 +321,8 @@ void Logic::startRound()
 {
 	// Assume players in are ordered in the way they should be placed at the beginning of each round.
 	for (int p = 0; p < m_numberOfPlayers; p++) {		
-		m_players[p].data.pos[0] = (m_mapSize - 100) * sin(2 * PI / m_numberOfPlayers);
-		m_players[p].data.pos[1] = (m_mapSize - 100) * cos(2 * PI / m_numberOfPlayers);
+		m_players[p].data.pos[0] = (m_mapSize - MAP_PLAYER_BORDER) * sin((double) p * (2 * PI / m_numberOfPlayers));
+		m_players[p].data.pos[1] = (m_mapSize - MAP_PLAYER_BORDER) * cos((double) p * (2 * PI / m_numberOfPlayers));
 
 		m_players[p].isAlive = true;
 		m_players[p].data.shieldDuration = 0;

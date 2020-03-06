@@ -313,22 +313,19 @@ bool Network::recievePacket(char* buffer)
 	}
 
 	//if (FD_ISSET(m_udpSocket, &recieveSocket)){
-	//	//int32_t intBuff;
-	//	//if (!recieveData(m_udpSocket, (char*)&intBuff, sizeof(intBuff))) {
-	//	//	return false;
-	//	//}
 		if (!recvfrom(m_udpSocket, buffer, maxSize, 0, NULL, NULL)) {
 			return false;
 		}
 		return true;
 	//}
 
-	return false;
+	//return false;
 }
 
 bool Network::sendInput(Input* i)
 {
-	if (!sendData(m_tcpServerSocket, (char*)i, sizeof(*i))) {
+	if (!sendData(m_tcpServerSocket, (char*)i, sizeof(Input))) {
+		OutputDebugStringA("Send Failed!\n");
 		return false;
 	}
 

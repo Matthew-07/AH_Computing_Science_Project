@@ -113,10 +113,10 @@ END
 IDR_ACCELERATOR1 ACCELERATORS
 BEGIN
     "A",            FUNC_ATTACK,            VIRTKEY, NOINVERT
-    "Q",            FUNC_SHIELD,            VIRTKEY, NOINVERT
     "W",            FUNC_BLINK,             VIRTKEY, NOINVERT
-    "E",            FUNC_SHOCK,             VIRTKEY, NOINVERT
     "S",            FUNC_DAGGER,            VIRTKEY, NOINVERT
+    "Q",            FUNC_SHIELD,            VIRTKEY, NOINVERT
+    "E",            FUNC_SHOCK,             VIRTKEY, NOINVERT
     "D",            FUND_STONE,             VIRTKEY, NOINVERT
 END
 

@@ -44,9 +44,12 @@ GameWindow::GameWindow(Graphics* graphics, Network* nw)
 
 LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	Input i;
+
 	switch (uMsg) {
 	case WM_CREATE:
 	{
+		latestPacketNumber = -1;
 		break;
 	}
 	case WM_PAINT:
@@ -63,34 +66,47 @@ LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	case CA_SHOWGAME:
 	{
+		if (wParam == SW_SHOW) {
+			if (lParam != NULL) {
+				m_userId = *(int32_t*)lParam;
+			}
+		}
 		startGame();
 		break;
 	}
 	case WM_COMMAND:
-	{
-		switch (LOWORD(wParam)) {
+	{		
+		switch (LOWORD(wParam)) {			
 		case FUNC_SHIELD:
-			Input i;
 			i.type = INP_SHIELD;
-			i.playerId = userId;
+			i.playerId = m_userId;
 			network->sendInput(&i);
 			break;
-		}
-	}
-	case WM_MBUTTONDOWN:
-	{
-		if (wParam == 0x0002) {
-			float xPos = GET_X_LPARAM(lParam);
-			float yPos = GET_Y_LPARAM(lParam);
 
-			Input i;
-			i.type = INP_MOVE;
-			i.playerId = userId;
-			i.data[0] = xPos;
-			i.data[1] = yPos;
+		case FUNC_BLINK:
+			i.type = INP_BLINK;
+			i.playerId = m_userId;
+
+			POINT p;
+			GetCursorPos(&p);
+			i.data[0] = p.x + m_camX;
+			i.data[1] = p.y + m_camY;
 			network->sendInput(&i);
 			break;
 		}
+		break;
+	}
+	case WM_RBUTTONDOWN:
+	{
+		float xPos = GET_X_LPARAM(lParam) + m_camX;
+		float yPos = GET_Y_LPARAM(lParam) + m_camY;
+
+		i.type = INP_MOVE;
+		i.playerId = m_userId;
+		i.data[0] = xPos;
+		i.data[1] = yPos;
+		network->sendInput(&i);
+		break;
 	}
 	}
 	
@@ -101,7 +117,7 @@ bool GameWindow::startGame()
 {
 	int32_t maxGamestateSize;
 
-	if (!network->getGameInfo(&m_numberOfPlayers, &m_numberOfTeams, &m_playerIds, &m_playerTeams, &maxGamestateSize)) {
+	if (!network->getGameInfo(&m_maxNumberOfPlayers, &m_numberOfTeams, &m_playerIds, &m_playerTeams, &maxGamestateSize)) {
 
 		int res = WSAGetLastError();
 		char buff[64];
@@ -114,9 +130,19 @@ bool GameWindow::startGame()
 		return false;
 	}
 
+	for (int p = 0; p < m_numberOfTeams; p++) {
+		if (m_playerIds[p] == m_userId) {
+			m_userTeam = m_playerTeams[p];
+		}
+	}
+
+	m_mapSize = MAP_SIZE_PER_PLAYER * m_maxNumberOfPlayers + MAP_SIZE_CONSTANT;
+
 	char *buff = new char[maxGamestateSize];
+	m_players = new PlayerData[m_maxNumberOfPlayers];
 
 	HACCEL hAccelTable = LoadAccelerators(m_inst, MAKEINTRESOURCE(IDR_ACCELERATOR1));
+	//HACCEL hAccelTable = LoadAccelerators(m_inst, MAKEINTRESOURCE(TEXT("IDR_ACCELERATOR1")));
 
 	while (true)
 	{
@@ -139,15 +165,14 @@ bool GameWindow::startGame()
 		}
 		else {
 			if (network->recievePacket(buff)) {				
-				packetTimer = std::chrono::steady_clock::now();
-				packetRecieved = true;
+				packetTimer = std::chrono::steady_clock::now();				
 
 				extractGamestate(buff);
 			}
 			InvalidateRect(m_hwnd, NULL, false);
 		}
 	}
-	delete[] buff;
+	delete[] buff, m_players;
 	packetRecieved = false;
 	return false;
 }
@@ -161,7 +186,7 @@ void GameWindow::onPaint() {
 
 	pRenderTarget->BeginDraw();
 
-	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(1.0f, 1.0f, 1.0f)));
+	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(0.8f, 0.8f, 0.8f)));	
 
 	// Don't draw the game until the first packet has been recieved.
 	if (packetRecieved) {
@@ -176,11 +201,14 @@ void GameWindow::onPaint() {
 
 		// Center camera on player while player is alive
 		for (int p = 0; p < m_numberOfPlayers; p++) {
-			if (m_players[p].id = userId) {
+			if (m_players[p].id == m_userId) {
 				m_camX = m_players[p].pos[0] - m_rect.right / 2;
-				m_camX = m_players[p].pos[1] - m_rect.bottom / 2;
+				m_camY = m_players[p].pos[1] - m_rect.bottom / 2;
+				break;
 			}
 		}
+
+		pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(-m_camX, -m_camY), m_mapSize,m_mapSize),bWhite);
 
 		for (int p = 0; p < m_numberOfPlayers; p++) {
 
@@ -189,11 +217,11 @@ void GameWindow::onPaint() {
 			newPos[1] = m_players[p].pos[1];
 			calculateMovement(newPos, m_players[p].targetPos, timeSinceLastPacket * PLAYER_SPEED);
 
-			if (m_players[p].id == userId) {
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(m_players[p].pos[0] - m_camX, m_players[p].pos[1] - m_camY), 30, 30), bPlayer);
+			if (m_players[p].id == m_userId) {
+				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 30, 30), bPlayer);
 			}
 			else {
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(m_players[p].pos[0] - m_camX, m_players[p].pos[1] - m_camY), 28, 28), teamBrushes[m_players[p].team]);
+				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), teamBrushes[m_players[p].team]);
 			}
 		}
 
@@ -204,7 +232,7 @@ void GameWindow::onPaint() {
 			newPos[1] = shockwave.pos[1];
 			calculateMovement(newPos, shockwave.dest, timeSinceLastPacket * SHOCKWAVE_SPEED);
 
-			if (shockwave.team = userTeam) {
+			if (shockwave.team = m_userTeam) {
 				//pRenderTarget->DrawLine();
 			}
 			else {
@@ -229,11 +257,11 @@ void GameWindow::onPaint() {
 				newPos[1] = dagger.pos[1];
 				calculateMovement(newPos, m_players[index].pos, timeSinceLastPacket * DAGGER_SPEED);
 
-				if (dagger.team = userTeam) {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dagger.pos[0] - m_camX, dagger.pos[1] - m_camY), 8, 8), bProjectileAlly);
+				if (dagger.team = m_userTeam) {
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileAlly);
 				}
 				else {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dagger.pos[0] - m_camX, dagger.pos[1] - m_camY), 8, 8), bProjectileEnemy);
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileEnemy);
 				}
 
 			}
@@ -266,13 +294,21 @@ void GameWindow::createGraphicResources()
 		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Blue), &bProjectileAlly);
 		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &bProjectileEnemy);
 
-		D2D1_COLOR_F colors[5] = {
+		UINT32 colours[5] = {
 			D2D1::ColorF::Orange,
 			D2D1::ColorF::Yellow,
 			D2D1::ColorF::Pink,
 			D2D1::ColorF::Purple,
 			D2D1::ColorF::Brown
 		};
+
+		teamBrushes.clear();
+
+		for (auto colour : colours) {
+			ID2D1SolidColorBrush* bTeamBrush;
+			pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(colour,1.0f), &bTeamBrush);
+			teamBrushes.push_back(bTeamBrush);
+		}
 	}
 }
 
@@ -280,32 +316,55 @@ void GameWindow::discardGraphicResources()
 {
 	SafeRelease(&pRenderTarget);
 	SafeRelease(&bBlack);
+	SafeRelease(&bWhite);
+	SafeRelease(&bPlayer);
+	SafeRelease(&bProjectileAlly);
+	SafeRelease(&bProjectileEnemy);
+
+	for (int i = 0; i < teamBrushes.size(); i++) {
+		SafeRelease(&teamBrushes[i]);
+	}
+	teamBrushes.clear();
 }
 
 void GameWindow::extractGamestate(char* packet)
 {
+	//if (*(int32_t*)packet < latestPacketNumber) {
+	//	return;		
+	//}
 	latestPacketNumber = *(int32_t*)packet;
+
 	packet += 4;
 
-	if (m_players != nullptr) {
-		delete[] m_players;
-	}
 	m_shockwaves.empty();
 	m_daggers.empty();
 
 	// Number of players
-	int32_t m_numberOfPlayers = *(int32_t*) packet;
-	packet += 4;
+	if (*(int32_t*)packet > m_maxNumberOfPlayers || *(int32_t*)packet < 1) {
+		// Something went wrong
+		OutputDebugString(L"Too many players\n");
+		return;
+	}	
+	m_numberOfPlayers = *(int32_t*)packet;
 
-	m_players = new PlayerData[m_numberOfPlayers];
+	//OutputDebugStringA(std::to_string(m_numberOfPlayers).c_str());
+
+	packet += 4;
 
 	for (int p = 0; p < m_numberOfPlayers; p++) {
 		m_players[p] = *(PlayerData*) packet;
 		packet += sizeof(PlayerData);
+	}	
+
+	// Shockwaves
+	if (*(int32_t*)packet > m_numberOfPlayers * MAX_SHOCKWAVES || *(int32_t*)packet < 0) {
+		// Something went wrong
+		OutputDebugString(L"Too many shockwaves\n");
+		return;
 	}
 
 	m_shockwaves.clear();
-	
+
 	int numberOfShockwaves = *(int32_t*)packet;
 	packet += 4;
 
@@ -315,7 +374,14 @@ void GameWindow::extractGamestate(char* packet)
 		m_shockwaves.push_back(shockwave);
 	}
 
-	m_shockwaves.clear();
+	// Daggers
+	if (*(int32_t*)packet > m_numberOfPlayers* MAX_DAGGERS || *(int32_t*)packet < 0) {
+		// Something went wrong
+		OutputDebugString(L"Too many daggers\n");
+		return;
+	}
+
+	m_daggers.clear();
 
 	int numberOfdaggers = *(int32_t*)packet;
 	packet += 4;
@@ -325,4 +391,7 @@ void GameWindow::extractGamestate(char* packet)
 		packet += sizeof(DaggerData);
 		m_daggers.push_back(dagger);
 	}
+
+	// At least one valid packet has been recieved!
+	packetRecieved = true;
 }
