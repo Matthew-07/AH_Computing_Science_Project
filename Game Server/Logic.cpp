@@ -24,6 +24,9 @@ Logic::Logic(int32_t numberOfPlayers, int32_t numberOfTeams, int32_t* playerIds,
 
 	tickNumber = 0;
 
+	m_daggers = std::list<Dagger>();
+	m_shockwaves = std::list<Shockwave>();
+
 	startRound();
 
 }
@@ -45,11 +48,12 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 						calculateMovement(dagger->data.pos, m_players[p].data.pos, DAGGER_SPEED_PER_TICK);
 					}
 					else {
-						m_daggers.erase(dagger++);
+						m_daggers.erase(dagger);
 					}
 					break;
 				}
 			}
+			dagger++;
 		}
 	}
 
@@ -61,8 +65,12 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 			shockwave->oldPos[1] = shockwave->data.pos[1];
 
 			calculateMovement(shockwave->data.pos, shockwave->data.dest, SHOCKWAVE_SPEED_PER_TICK);
+
 			if (shockwave->data.pos[0] == shockwave->data.dest[0]) {
 				m_shockwaves.erase(shockwave++);
+			}
+			else {
+				shockwave++;
 			}
 		}
 	}
@@ -104,7 +112,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 						dagger.data.pos,
 						DAGGER_COLLISION_SIZE
 					)) {
-						if (m_players[p].data.id != dagger.data.targetId) {
+						if (m_players[p].data.id == dagger.data.targetId) {
 							if (m_players[p].data.shieldDuration == 0) {
 								m_players[p].isAlive = false;
 							}
@@ -174,11 +182,18 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 	// IMPORTANT -> when collecting player inputs it is important to somehow check that the input is from the current round, currently it is assumed this is handled elsewhere.
 	while (playerInputs.size() > 0) {
 		int32_t index = getPlayerById(playerInputs.front().playerId);
+		if (index < 0 || !m_players[index].isAlive) {
+			playerInputs.pop_front();
+			continue;
+		}
 		switch (playerInputs.front().type) {			
 		case INP_MOVE:
 		{
-			m_players[index].data.targetPos[0] = playerInputs.front().data[0];
-			m_players[index].data.targetPos[1] = playerInputs.front().data[1];
+			if (checkBounds(playerInputs.front().data.f)) {
+				m_players[index].data.stoneDuration = 0; // Any action cancels stone form
+				m_players[index].data.targetPos[0] = playerInputs.front().data.f[0];
+				m_players[index].data.targetPos[1] = playerInputs.front().data.f[1];					
+			}
 			break;
 		}
 		case INP_SHIELD:
@@ -186,51 +201,98 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 			if (m_players[index].data.cooldowns[SHIELD_INDEX] == 0) {
 				m_players[index].data.cooldowns[SHIELD_INDEX] = SHIELD_COOLDOWN;
 
+				m_players[index].data.stoneDuration = 0; // Any action cancels stone form
 				m_players[index].data.shieldDuration = SHIELD_DURATION;				
 			}
 			break;
 		}
 		case INP_BLINK:
 		{
-			if (m_players[index].data.cooldowns[BLINK_INDEX] == 0) {
+			if (m_players[index].data.cooldowns[BLINK_INDEX] == 0 && checkBounds(playerInputs.front().data.f)) {
+
+				m_players[index].data.stoneDuration = 0; // Any action cancels stone form
 				m_players[index].data.cooldowns[BLINK_INDEX] = BLINK_COOLDOWN;
 
-				m_players[index].data.pos[0] = playerInputs.front().data[0];
-				m_players[index].data.pos[1] = playerInputs.front().data[1];
+				m_players[index].data.pos[0] = playerInputs.front().data.f[0];
+				m_players[index].data.pos[1] = playerInputs.front().data.f[1];
+
+				m_players[index].data.targetPos[0] = playerInputs.front().data.f[0];
+				m_players[index].data.targetPos[1] = playerInputs.front().data.f[1];
+
+				// Daggers lose their target when their target blinks
+				if (m_daggers.size() > 0) {
+					std::list<Dagger>::iterator dagger = m_daggers.begin();
+					while (dagger != m_daggers.end()) {
+						if (dagger->data.targetId == m_players[index].data.id) {
+							m_daggers.erase(dagger++);
+						}
+						else {
+							dagger++;
+						}
+					}
+
+				}
 			}
 			break;
 		}
 		case INP_SHOCK:
 		{
 			if (m_players[index].data.cooldowns[SHOCK_INDEX] == 0) {
+
+				m_players[index].data.stoneDuration = 0; // Any action cancels stone form
+
+				m_players[index].data.cooldowns[SHOCK_INDEX] = SHOCKWAVE_COOLDOWN;
+
 				Shockwave s;
 				s.data.pos[0] = m_players[index].data.pos[0];
 				s.data.pos[1] = m_players[index].data.pos[1];
 
-				s.data.dest[0] = playerInputs.front().data[0];
-				s.data.dest[1] = playerInputs.front().data[1];
+				s.oldPos[0] = m_players[index].data.pos[0];
+				s.oldPos[1] = m_players[index].data.pos[1];
+
+				s.data.start[0] = m_players[index].data.pos[0]; // Used for drawing
+				s.data.start[1] = m_players[index].data.pos[1];
+
+				s.data.dest[0] = playerInputs.front().data.f[0];
+				s.data.dest[1] = playerInputs.front().data.f[1];
+
+				// The shockwave should travel 1000 units
+				float dist = calculateDistance(s.data.start, s.data.dest);
+				float multiplier = SHOCKWAVE_RANGE / dist;
+
+				s.data.dest[0] *= multiplier;
+				s.data.dest[1] *= multiplier;
 
 				s.data.team = m_players[index].data.team;
 
-				m_shockwaves.push_back(s);
+				m_shockwaves.emplace_back(s);
 			}
 			break;
 		}
 		case INP_DAGGER:
 		{			
 			if (m_players[index].data.cooldowns[DAGGER_INDEX] == 0) {
-				Dagger d;
+
+				m_players[index].data.stoneDuration = 0; // Any action cancels stone form
+
+				m_players[index].data.cooldowns[DAGGER_INDEX] = DAGGER_COOLDOWN;
+
+				Dagger d = Dagger();
+
 				d.data.pos[0] = m_players[index].data.pos[0];
 				d.data.pos[1] = m_players[index].data.pos[1];
 
-				d.data.targetId = playerInputs.front().data[0];
+				d.oldPos[0] = m_players[index].data.pos[0];
+				d.oldPos[1] = m_players[index].data.pos[1];
+
+				d.data.targetId = playerInputs.front().data.i[0];
 				d.data.senderId = playerInputs.front().playerId;
 
 				d.data.lifetime = 0;
 
 				d.data.team = m_players[index].data.team;
 
-				m_daggers.push_back(d);
+				m_daggers.emplace_back(d);
 			}
 			break;
 		}
@@ -240,6 +302,11 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				m_players[index].data.cooldowns[STONE_INDEX] = STONE_COOLDOWN;
 
 				m_players[index].data.stoneDuration = STONE_DURATION;
+				m_players[index].data.shieldDuration = 0; // Stone overrides shield.
+
+				// Stop moving
+				m_players[index].data.targetPos[0] = m_players[index].data.pos[0];
+				m_players[index].data.targetPos[1] = m_players[index].data.pos[1];
 			}
 			break;
 		}
@@ -319,6 +386,13 @@ int32_t Logic::getGamestate(char* buffer)
 
 void Logic::startRound()
 {
+	if (m_shockwaves.size() > 0) {
+		m_shockwaves.clear();
+	}
+	if (m_daggers.size() > 0) {
+		m_daggers.clear();
+	}
+
 	// Assume players in are ordered in the way they should be placed at the beginning of each round.
 	for (int p = 0; p < m_numberOfPlayers; p++) {		
 		m_players[p].data.pos[0] = (m_mapSize - MAP_PLAYER_BORDER) * sin((double) p * (2 * PI / m_numberOfPlayers));

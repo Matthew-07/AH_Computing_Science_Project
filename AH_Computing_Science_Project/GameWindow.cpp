@@ -78,21 +78,77 @@ LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{		
 		switch (LOWORD(wParam)) {			
 		case FUNC_SHIELD:
+		{
 			i.type = INP_SHIELD;
 			i.playerId = m_userId;
 			network->sendInput(&i);
 			break;
+		}
 
 		case FUNC_BLINK:
+		{
 			i.type = INP_BLINK;
 			i.playerId = m_userId;
 
 			POINT p;
 			GetCursorPos(&p);
-			i.data[0] = p.x + m_camX;
-			i.data[1] = p.y + m_camY;
+			ScreenToClient(m_hwnd, &p);
+			i.data.f[0] = p.x + m_camX;
+			i.data.f[1] = p.y + m_camY;
 			network->sendInput(&i);
 			break;
+		}
+
+		case FUNC_SHOCK:
+		{
+			i.type = INP_SHOCK;
+			i.playerId = m_userId;
+
+			POINT p;
+			GetCursorPos(&p);
+			ScreenToClient(m_hwnd, &p);
+			i.data.f[0] = p.x + m_camX;
+			i.data.f[1] = p.y + m_camY;
+			network->sendInput(&i);
+			break;
+		}
+		
+		case FUNC_DAGGER:
+		{
+			float minDist = -1.0f;
+			int32_t minDistId = -1;
+
+			POINT p;
+			GetCursorPos(&p);
+			ScreenToClient(m_hwnd, &p);
+
+			int32_t userIndex = -1;
+			for (int player = 0; player < m_numberOfPlayers; player++) {
+				if (m_players[player].id == m_userId) {
+					userIndex = player;
+					break;
+				}
+			}
+
+			for (int player = 0; player < m_numberOfPlayers; player++) {
+				if (m_players[player].team != m_players[userIndex].team) {
+					float dist = sqrt(pow(m_players[player].pos[0] - m_players[userIndex].pos[1], 2)
+						+ pow(m_players[player].pos[0] - m_players[userIndex].pos[1], 2));
+
+					if (dist < minDist || minDist < 0) {
+						minDist = dist;
+						minDistId = m_players[player].id;
+					}
+
+				}
+			}
+
+			i.type = INP_DAGGER;
+			i.playerId = m_userId;
+			i.data.i[0] = minDistId;
+			network->sendInput(&i);
+			break;
+		}
 		}
 		break;
 	}
@@ -103,8 +159,8 @@ LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		i.type = INP_MOVE;
 		i.playerId = m_userId;
-		i.data[0] = xPos;
-		i.data[1] = yPos;
+		i.data.f[0] = xPos;
+		i.data.f[1] = yPos;
 		network->sendInput(&i);
 		break;
 	}
@@ -142,7 +198,6 @@ bool GameWindow::startGame()
 	m_players = new PlayerData[m_maxNumberOfPlayers];
 
 	HACCEL hAccelTable = LoadAccelerators(m_inst, MAKEINTRESOURCE(IDR_ACCELERATOR1));
-	//HACCEL hAccelTable = LoadAccelerators(m_inst, MAKEINTRESOURCE(TEXT("IDR_ACCELERATOR1")));
 
 	while (true)
 	{
@@ -157,7 +212,8 @@ bool GameWindow::startGame()
 				break;
 			}
 
-			if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+			//if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+			if (!TranslateAccelerator(m_hwnd, hAccelTable, &msg))
 			{
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
@@ -218,10 +274,28 @@ void GameWindow::onPaint() {
 			calculateMovement(newPos, m_players[p].targetPos, timeSinceLastPacket * PLAYER_SPEED);
 
 			if (m_players[p].id == m_userId) {
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 30, 30), bPlayer);
+				if (m_players[p].stoneDuration > 0) {
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bStone);
+				}
+				else {
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bPlayer);
+
+					if (m_players[p].shieldDuration > 0) {
+						pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 26, 26), bShield, 5);
+					}
+				}				
 			}
-			else {
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), teamBrushes[m_players[p].team]);
+			else {				
+				if (m_players[p].stoneDuration > 0) {
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bStone);
+				}
+				else {
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), teamBrushes[m_players[p].team]);
+
+					if (m_players[p].shieldDuration > 0) {
+						pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 26, 26), bShield, 5);
+					}
+				}
 			}
 		}
 
@@ -232,11 +306,13 @@ void GameWindow::onPaint() {
 			newPos[1] = shockwave.pos[1];
 			calculateMovement(newPos, shockwave.dest, timeSinceLastPacket * SHOCKWAVE_SPEED);
 
-			if (shockwave.team = m_userTeam) {
-				//pRenderTarget->DrawLine();
+			if (shockwave.team == m_userTeam) {
+				pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY),D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY),bProjectileAlly, 3);
+				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 5, 5), bProjectileAlly);
 			}
 			else {
-				//pRenderTarget->DrawLine();
+				pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY), D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), bProjectileEnemy, 3);
+				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 5, 5), bProjectileEnemy);
 			}
 		}
 
@@ -257,7 +333,7 @@ void GameWindow::onPaint() {
 				newPos[1] = dagger.pos[1];
 				calculateMovement(newPos, m_players[index].pos, timeSinceLastPacket * DAGGER_SPEED);
 
-				if (dagger.team = m_userTeam) {
+				if (dagger.team == m_userTeam) {
 					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileAlly);
 				}
 				else {
@@ -293,6 +369,9 @@ void GameWindow::createGraphicResources()
 
 		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Blue), &bProjectileAlly);
 		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &bProjectileEnemy);
+
+		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Gray), &bStone);
+		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::MediumPurple), &bShield);
 
 		UINT32 colours[5] = {
 			D2D1::ColorF::Orange,

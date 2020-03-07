@@ -45,6 +45,7 @@ public:
 struct ShockwaveData {
 	float pos[2];
 	float dest[2];
+	float start[2];
 
 	int32_t team;
 };
@@ -68,11 +69,16 @@ struct Dagger {
 	DaggerData data;	
 };
 
+union data64 {
+	float f[2];
+	int32_t i[2];
+};
+
 struct Input {
 public:
 	int32_t playerId;
 	int32_t type;
-	float data[2]; // Up to two bits of data
+	data64 data; // Up to two 4 byte pieces of data
 };
 
 // Each 'Logic' Object will represent a game currently being played.
@@ -108,6 +114,12 @@ private:
 	void startRound();	
 
 	bool calculateCollision(float* pos1, float* mov1, float* pos2, float* mov2, float maxDist);
+	bool checkBounds(float* pos) {
+		if (sqrt(pow(pos[0], 2) + pow(pos[1], 2)) > m_mapSize) {
+			return false;
+		}
+		return true;
+	}
 
 	int32_t getPlayerById(int32_t id);
 
@@ -149,44 +161,44 @@ inline void calculateMovement(float* pos, float* targetPos, float speed)
 	pos[1] += yDiff / dist * speed;
 }
 
-//inline float calculateDistance(float* point1, float* point2)
-//{
-//	return sqrt(pow(point2[0] - point1[0], 2) + pow(point2[1] - point1[1], 2));
-//}
+inline float calculateDistance(float* point1, float* point2)
+{
+	return sqrt(pow(point2[0] - point1[0], 2) + pow(point2[1] - point1[1], 2));
+}
 
 const int32_t	TICKS_PER_SECOND = 64;
 
 const int32_t	MAX_SCORE = 15;
 
-const float		PLAYER_SPEED = 50;
+const float		PLAYER_SPEED = 60;
 const float		PLAYER_SPEED_PER_TICK = PLAYER_SPEED / TICKS_PER_SECOND;
 
-const float		SHOCKWAVE_SPEED = 200;
+const float		SHOCKWAVE_SPEED = 300;
 const float		SHOCKWAVE_SPEED_PER_TICK = SHOCKWAVE_SPEED / TICKS_PER_SECOND;
 const int32_t	SHOCKWAVE_RANGE = 1000;
 const int32_t	SHOCKWAVE_COLLISION_SIZE = 35;
-const int32_t	SHOCKWAVE_COOLDOWN = 80;
+const int32_t	SHOCKWAVE_COOLDOWN = 160;
 // A shockwave takes range/speed time to finish and can at most be produced once every cooldown ticks.
 const int32_t	MAX_SHOCKWAVES = ceil(SHOCKWAVE_RANGE / SHOCKWAVE_SPEED / SHOCKWAVE_COOLDOWN);
 
-const float		DAGGER_SPEED = 160;
+const float		DAGGER_SPEED = 250;
 const float		DAGGER_SPEED_PER_TICK = DAGGER_SPEED / TICKS_PER_SECOND;
 const int32_t	DAGGER_RANGE = 800;
 const int32_t	DAGGER_MAX_LIFETIME = 600;
-const int32_t	DAGGER_COLLISION_SIZE = 20;
-const int32_t	DAGGER_COOLDOWN = 100;
+const int32_t	DAGGER_COLLISION_SIZE = 36;
+const int32_t	DAGGER_COOLDOWN = 200;
 const int32_t	MAX_DAGGERS = DAGGER_MAX_LIFETIME / DAGGER_COOLDOWN;
 
-const int32_t	SHIELD_DURATION = 6;
-const int32_t	SHIELD_COOLDOWN = 80;
+const int32_t	SHIELD_DURATION = 12;
+const int32_t	SHIELD_COOLDOWN = 160;
 
-const int32_t	BLINK_COOLDOWN = 60;
+const int32_t	BLINK_COOLDOWN = 120;
 
-const int32_t	STONE_DURATION = 150;
-const int32_t	STONE_COOLDOWN = 300;
+const int32_t	STONE_DURATION = 300;
+const int32_t	STONE_COOLDOWN = 600;
 
 const int32_t	MAP_SIZE_PER_PLAYER = 100;
-const int32_t	MAP_SIZE_CONSTANT = 200;
+const int32_t	MAP_SIZE_CONSTANT = 300;
 const int32_t	MAP_PLAYER_BORDER = 100;
 
 /* Tasks per tick:

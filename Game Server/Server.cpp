@@ -181,6 +181,20 @@ bool Server::start()
 				newGame.logic = &logic;
 				newGame.players = std::list<ConnectedPlayer>();
 
+				int32_t index = 0;
+
+				while (true) {
+					for (auto g : m_games) {
+						if (g->logic->index == index) {
+							index++;
+							break;
+						}
+					}
+					break;
+				}
+
+				newGame.logic->index = index;
+
 				m_gameThreads.push_back(std::thread(&Server::gameThread, this, &newGame));
 				m_games.push_back(&newGame);
 				break;
@@ -291,6 +305,7 @@ bool Server::gameThread(Game* game)
 	if (bind(udpSocket, (struct sockaddr*) & server, sizeof(server)) == SOCKET_ERROR)
 	{
 		printf(" Bind failed with error code : % d ", WSAGetLastError());
+		getchar();
 		exit(EXIT_FAILURE);
 	}
 
@@ -324,7 +339,9 @@ bool Server::gameThread(Game* game)
 		}
 
 		if (select(0, &inputSockets, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+			int res = WSAGetLastError();
 			game->mutex.unlock();
+			std::cout << "Failed to check for player input with error: " << res << "." << std::endl;
 			return false;
 		}
 
@@ -333,9 +350,10 @@ bool Server::gameThread(Game* game)
 				Input input;
 				if (!recieveData(p.socket, (char*)&input, sizeof(input))) {
 					game->mutex.unlock();
+					std::cout << "Failed to recieve player input." << std::endl;
 					return false;
 				}
-				playerInputs.push_back(input);
+				playerInputs.emplace_back(input);
 			}
 		}
 
@@ -356,6 +374,7 @@ bool Server::gameThread(Game* game)
 					if (sendto(udpSocket, buffer, gameStateSize, 0, (sockaddr*)&p.address, sizeof(p.address)) == SOCKET_ERROR) {
 						int err = WSAGetLastError();
 						std::cout << "Failed to send packet with error: " << err << std::endl;
+						std::cout << "Buffer size: " << gameStateSize << "." << std::endl;
 					}
 				}
 
@@ -451,6 +470,7 @@ bool Server::userThread(LPVOID clientSocket)
 				}
 
 				ConnectedPlayer p;
+
 				p.socket = userSocket;
 				p.userId = userId;
 				sockaddr_in6 addr;
@@ -459,7 +479,7 @@ bool Server::userThread(LPVOID clientSocket)
 				addr.sin6_port = htons(udpPort);
 				p.address = addr;
 				game->mutex.lock();
-				game->players.push_back(p);
+				game->players.emplace_back(p);
 				game->mutex.unlock();
 
 				locatingGame = false;
