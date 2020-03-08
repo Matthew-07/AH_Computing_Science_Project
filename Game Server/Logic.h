@@ -9,14 +9,12 @@
 #define INP_SHOCK	0x04
 #define	INP_DAGGER	0x05
 #define	INP_STONE	0x06
-#define	INP_ATTACK	0x07
 
 #define SHIELD_INDEX	0
 #define BLINK_INDEX		1
 #define SHOCK_INDEX		2
 #define DAGGER_INDEX	3
 #define STONE_INDEX		4
-#define ATTACK_INDEX	5
 
 // Data that is sent to the client
 struct PlayerData {
@@ -27,7 +25,7 @@ public:
 	int32_t shieldDuration;
 	int32_t stoneDuration;
 
-	int32_t cooldowns[6];
+	int32_t cooldowns[5];
 	int32_t id;	
 	int32_t team;
 };
@@ -57,8 +55,7 @@ struct Shockwave {
 
 struct DaggerData {
 	float pos[2];
-	int32_t targetId;
-	int32_t senderId;
+	int32_t targetId;	
 	int32_t lifetime;
 
 	int32_t team;
@@ -67,6 +64,9 @@ struct DaggerData {
 struct Dagger {
 	float oldPos[2];
 	DaggerData data;	
+
+	int32_t senderId;
+	int32_t senderTeam;
 };
 
 union data64 {
@@ -196,6 +196,8 @@ const int32_t	BLINK_COOLDOWN = 120;
 
 const int32_t	STONE_DURATION = 300;
 const int32_t	STONE_COOLDOWN = 600;
+
+const int32_t	POST_BLINK_COOLDOWN = 32;
 
 const int32_t	MAP_SIZE_PER_PLAYER = 100;
 const int32_t	MAP_SIZE_CONSTANT = 300;

@@ -104,30 +104,39 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 			}
 
 			if (m_daggers.size() > 0) {
-				for (auto dagger : m_daggers) {
+				std::list<Dagger>::iterator dagger = m_daggers.begin();
+				while (dagger != m_daggers.end()) {
 					if (calculateCollision(
 						m_players[p].oldPos,
 						m_players[p].data.pos,
-						dagger.oldPos,
-						dagger.data.pos,
+						dagger->oldPos,
+						dagger->data.pos,
 						DAGGER_COLLISION_SIZE
-					)) {
-						if (m_players[p].data.id == dagger.data.targetId) {
+					))
+					{
+						if (m_players[p].data.id == dagger->data.targetId) {
 							if (m_players[p].data.shieldDuration == 0) {
 								m_players[p].isAlive = false;
 							}
 							else {
-								dagger.data.targetId = dagger.data.senderId;
-								dagger.data.senderId = m_players[p].data.id;
+								// When a dagger hits a player with a shield it is reflected back.
+
+								dagger->data.targetId = dagger->senderId;
+								dagger->senderId = m_players[p].data.id;
+
+								int32_t temp = dagger->senderTeam;
+								dagger->senderTeam = dagger->data.team;
+								dagger->data.team = temp;
 							}
 							break;
 						}
 					}
+					dagger++;
 				}
 			}
 
 			// If the player is still alive, reduce all active cooldowns and durations by 1.
-			for (int c = 0; c < 6; c++) {
+			for (int c = 0; c < 5; c++) {
 				if (m_players[p].data.cooldowns[c] > 0) {
 					m_players[p].data.cooldowns[c]--;
 				}
@@ -232,6 +241,14 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 					}
 
 				}
+
+				// Don't let players use offensive abilities immediately after blinking.
+				if (m_players[index].data.cooldowns[SHOCK_INDEX] < POST_BLINK_COOLDOWN) {
+					m_players[index].data.cooldowns[SHOCK_INDEX] = POST_BLINK_COOLDOWN;
+				}
+				if (m_players[index].data.cooldowns[DAGGER_INDEX] < POST_BLINK_COOLDOWN) {
+					m_players[index].data.cooldowns[DAGGER_INDEX] = POST_BLINK_COOLDOWN;
+				}
 			}
 			break;
 		}
@@ -286,7 +303,8 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				d.oldPos[1] = m_players[index].data.pos[1];
 
 				d.data.targetId = playerInputs.front().data.i[0];
-				d.data.senderId = playerInputs.front().playerId;
+				d.senderId = playerInputs.front().playerId;
+				d.senderTeam = m_players[index].data.team;
 
 				d.data.lifetime = 0;
 
@@ -308,11 +326,6 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				m_players[index].data.targetPos[0] = m_players[index].data.pos[0];
 				m_players[index].data.targetPos[1] = m_players[index].data.pos[1];
 			}
-			break;
-		}
-		case INP_ATTACK:
-		{
-
 			break;
 		}
 		}
@@ -405,7 +418,7 @@ void Logic::startRound()
 		m_players[p].data.targetPos[0] = m_players[p].data.pos[0];
 		m_players[p].data.targetPos[1] = m_players[p].data.pos[1];
 
-		for (int c = 0; c < 6; c++) {
+		for (int c = 0; c < 5; c++) {
 			m_players[p].data.cooldowns[c] = 0;
 		}
 	}

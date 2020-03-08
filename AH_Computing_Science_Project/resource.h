@@ -11,12 +11,11 @@
 #define IDS_LOGINWINDOWNAME             106
 #define IDR_ACCELERATOR1                108
 #define IDC_SCROLLBAR1                  1002
-#define FUNC_ATTACK                     40001
 #define FUNC_SHIELD                     40002
 #define FUNC_BLINK                      40003
 #define FUNC_SHOCK                      40004
 #define FUNC_DAGGER                     40005
-#define FUND_STONE                      40006
+#define FUNC_STONE                      40006
 
 // Next default values for new objects
 // 

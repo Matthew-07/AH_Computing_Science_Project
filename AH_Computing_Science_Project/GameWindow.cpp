@@ -85,6 +85,14 @@ LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 
+		case FUNC_STONE:
+		{
+			i.type = INP_STONE;
+			i.playerId = m_userId;
+			network->sendInput(&i);
+			break;
+		}
+
 		case FUNC_BLINK:
 		{
 			i.type = INP_BLINK;

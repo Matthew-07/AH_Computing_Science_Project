@@ -292,6 +292,8 @@ bool Server::gameThread(Game* game)
 	if ((udpSocket = socket(AF_INET6, SOCK_DGRAM, 0)) == INVALID_SOCKET)
 	{
 		printf(" Could not create socket : % d ", WSAGetLastError());
+		getchar();
+		exit(EXIT_FAILURE);
 	}
 	printf(" Socket created.\n ");
 
@@ -342,7 +344,8 @@ bool Server::gameThread(Game* game)
 			int res = WSAGetLastError();
 			game->mutex.unlock();
 			std::cout << "Failed to check for player input with error: " << res << "." << std::endl;
-			return false;
+			//return false;
+			continue;
 		}
 
 		for (auto p : game->players) {			
