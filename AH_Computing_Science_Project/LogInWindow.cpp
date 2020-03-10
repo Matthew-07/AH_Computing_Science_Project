@@ -152,7 +152,8 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 				delete[] username, password;
 
-				if (id > 0) {
+				if (id > 0) {				
+
 					// Login successful
 					SendMessage(m_parentHwnd, CA_SHOWMAIN, SW_SHOW, (LPARAM) &id);
 					ShowWindow(Window(), SW_HIDE);
@@ -165,7 +166,12 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 					}
 					else {
 						// Again assume there were no issues in the communication with the game coordinator.
-						m_errorText = L"Username or password incorrect.";
+						if (id == -5) {
+							m_errorText = L"This account is already in use.";
+						}
+						else {
+							m_errorText = L"Username or password incorrect.";							
+						}
 						InvalidateRect(m_hwnd, NULL, false);
 					}
 				}

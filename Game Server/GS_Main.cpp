@@ -11,6 +11,5 @@ int main() {
 		std::cout << "Failed to start game server.";
 		return 1;
 	}
-
-	getchar();
+	return 0;
 }

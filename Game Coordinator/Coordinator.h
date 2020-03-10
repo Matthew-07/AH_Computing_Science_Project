@@ -96,5 +96,7 @@ private:
 
 	std::list<Server*>			m_servers;
 
+	std::list<int32_t>			m_connectedPlayerIDs;
+
 	Database *m_db = NULL;	
 };

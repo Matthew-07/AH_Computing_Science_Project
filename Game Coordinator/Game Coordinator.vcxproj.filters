@@ -67,5 +67,11 @@
     <CopyFileToFolders Include="addTeam.sql">
       <Filter>SQL</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="countWins.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="countGames.sql">
+      <Filter>SQL</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -13,6 +13,7 @@ public:
 	bool init(); // Initialize Winsock
 	bool startConnection(); // Connect to game coordinator
 	int logIn(bool newAccount, std::string username, std::string password);
+	void recieveProfileData(int32_t* numberOfGames, int32_t* numberOfWins);
 	bool joinMatchmakingQueue();
 	bool leaveMatchmakingQueue();
 	bool checkForGame(int32_t& userId);

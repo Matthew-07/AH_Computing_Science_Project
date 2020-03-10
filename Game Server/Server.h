@@ -12,16 +12,15 @@
 #define BUFFER_SIZE 8
 
 struct ConnectedPlayer {
-	SOCKET socket;
-	int32_t userId;
+	SOCKET socket = INVALID_SOCKET;
+	int32_t userId = -1;
 
-	sockaddr_in6 address;
+	sockaddr_in6 address = sockaddr_in6();
 };
 
 struct Game {
-	Logic *logic;
-	std::list <ConnectedPlayer> players;
-	bool gameEnded = false;
+	Logic *logic = NULL;
+	std::list<ConnectedPlayer> players;// = std::list<ConnectedPlayer>();
 
 	std::mutex mutex;
 };
@@ -39,7 +38,7 @@ public:
 private:
 	WSADATA wsaData;
 
-	SOCKET m_GCsocket, m_UserListenSocket;
+	SOCKET m_GCsocket = INVALID_SOCKET, m_UserListenSocket = INVALID_SOCKET;
 
 	//int MAXGAMES = 1;
 	//std::string MAXGAMESMSG;
@@ -48,6 +47,8 @@ private:
 
 	std::list<std::thread>	m_gameThreads;
 	std::list<Game*>		m_games;
+
+	std::list<GameResult>	m_results;
 
 	std::thread* m_userConnectionsThread;
 	std::list<std::thread>	m_userThreads;

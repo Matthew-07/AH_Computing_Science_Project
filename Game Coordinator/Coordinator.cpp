@@ -179,7 +179,7 @@ bool Coordinator::userThread(LPVOID lParam)
 
 	SOCKET userSocket = (SOCKET)lParam;	
 
-	int32_t* userId = new int32_t[1];
+	int32_t userId = -1;
 
 	while (true) {
 		char recvBuff[66];
@@ -202,24 +202,38 @@ bool Coordinator::userThread(LPVOID lParam)
 
 		// Create Account
 		if (logInAttempt[0] == 'Y') {
-			*userId = m_db->addUser(username, password);
+			userId = m_db->addUser(username, password);
 		}
 		// Else log in to existing account
-		else {
-			*userId = m_db->logIn(username, password);
+		else {			
+			userId = m_db->logIn(username, password);
+
+			for (auto id : m_connectedPlayerIDs) {
+				if (userId == id) {
+					userId = -5;
+					break;
+				}
+			}
 		}
 
 		//std::string msg("123");
 		//char sendBuff[9];
 		//strcpy_s(sendBuff, _countof(sendBuff), msg.c_str());
-		sendData(userSocket, (char*)userId, sizeof(*userId));
+		sendData(userSocket, (char*)&userId, sizeof(userId));
 
-		if (*userId > 0) {
+		if (userId > 0) {
+			m_connectedPlayerIDs.push_back(userId);
+			std::cout << "Player " << userId << " has connected,";
 			break;
 		}
 	}
 	
 	// send profile information
+	int32_t data[2] = { 0,0 };
+	m_db->getUserGameInfo(userId, &data[0], &data[1]);
+	std::cout << "they have played " << data[0] << " games and won " << data[1] << " of them." << std::endl << std::endl;
+
+	sendData(userSocket, (char*)data, 8);
 	// -----------------
 
 	// Wait for commands
@@ -236,106 +250,87 @@ bool Coordinator::userThread(LPVOID lParam)
 
 		FD_SET(userSocket, &recieveSocket);
 		if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
-			printf("Player %i disconnected.\n\n", *userId);
+			printf("Player %i disconnected.\n\n", userId);
 
 			mtx.lock();
 			std::list<Player*>::iterator it;
 			for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
-				if ((*it)->id = *userId) {
+				if ((*it)->id = userId) {
 					m_matchmakingQueue.erase(it);
 					break;
 				}
 			}
+			m_connectedPlayerIDs.remove(userId);
 			mtx.unlock();
 			closesocket(userSocket);
-
-			//while (playerFound) {
-			//	if (tasks.size() > 0) {
-			//		if (tasks.front().type == USER_LEAVE) {
-			//			return false;
-			//		}
-			//	}
-			//	else {
-			//		Sleep(100);
-			//	}
-			//}
 			return false;
 		}
 		if (FD_ISSET(userSocket, &recieveSocket)) {
-			int32_t* int32Buff = new int32_t;
-			if (!recieveData(userSocket, (char*)int32Buff, 4))
+			int32_t int32Buff = 0;
+			if (!recieveData(userSocket, (char*)&int32Buff, 4))
 			{
 				// Connection lost
-				printf("Player %i disconnected.\n\n", *userId);
+				printf("Player %i disconnected.\n\n",userId);
 				mtx.lock();
 				std::list<Player*>::iterator it;
 				for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
-					if ((*it)->id = *userId) {
+					if ((*it)->id = userId) {
 						m_matchmakingQueue.erase(it);
 						break;
 					}
 				}
+				m_connectedPlayerIDs.remove(userId);
 				mtx.unlock();
 				closesocket(userSocket);
 
-				//while (playerFound) {
-				//	if (tasks.size() > 0) {
-				//		if (tasks.front().type == USER_LEAVE) {
-				//			return false;
-				//		}
-				//	}
-				//	else {
-				//		Sleep(100);
-				//	}
-				//}
 				return false;
 			}
 			// Respond to command
-			switch (*int32Buff) {
+			switch (int32Buff) {
 			case JOIN_QUEUE:
 			{
 				mtx.lock();
-				*int32Buff = m_servers.size();
+				int32Buff = m_servers.size();
 
-				sendData(userSocket, (char*)int32Buff, sizeof(*int32Buff));
-				in6_addr* addrBuff = new in6_addr[*int32Buff];
+				sendData(userSocket, (char*)&int32Buff, sizeof(int32Buff));
+				in6_addr* addrBuff = new in6_addr[int32Buff];
 				for (auto server : m_servers) {
 					memcpy(addrBuff, server->ip, sizeof(in6_addr));
 					addrBuff++;
 				}
 				mtx.unlock();
 
-				addrBuff -= *int32Buff;
-				sendData(userSocket, (char*)addrBuff, (*int32Buff) * sizeof(in6_addr));
+				addrBuff -= int32Buff;
+				sendData(userSocket, (char*)addrBuff, int32Buff * sizeof(in6_addr));
 
-				if (*int32Buff == 0) {
-					std::cout << "Player " << *userId << " requested to join the matchmaking queue but there are no servers available.\n\n";
+				if (int32Buff == 0) {
+					std::cout << "Player " << userId << " requested to join the matchmaking queue but there are no servers available.\n\n";
 					continue;
 				}
 
-				int64_t* pingBuff = new int64_t[*int32Buff];
-				recieveData(userSocket, (char*)pingBuff, (*int32Buff) * sizeof(pingBuff[0]));
+				int64_t* pingBuff = new int64_t[int32Buff];
+				recieveData(userSocket, (char*)pingBuff, int32Buff * sizeof(pingBuff[0]));
 
 				bool usableServers = false;
-				for (int i = 0; i < *int32Buff; i++) {
+				for (int i = 0; i < int32Buff; i++) {
 					if (pingBuff[i] >= 0) {
 						usableServers = true;
 					}
 				}
 
 				if (!usableServers) {
-					std::cout << "Player " << *userId << " requested to join the matchmaking queue but the player does not have a suitable connection to any of the servers.\n\n";
+					std::cout << "Player " << userId << " requested to join the matchmaking queue but the player does not have a suitable connection to any of the servers.\n\n";
 					continue;
 				}
 
 				Player * p = new Player();
-				p->id = *userId;
+				p->id = userId;
 				p->playerSocket = &userSocket;
 				p->threadTasks = &tasks;
-				std::cout << "Player " << *userId << " requested to join the matchmaking queue:" << std::endl;
+				std::cout << "Player " << userId << " requested to join the matchmaking queue:" << std::endl;
 
 				// Insertion sort
-				for (int i = 1; i < *int32Buff; i++) {
+				for (int i = 1; i < int32Buff; i++) {
 					int64_t tempPing = pingBuff[i];
 					in6_addr tempIp = addrBuff[i];
 
@@ -349,7 +344,7 @@ bool Coordinator::userThread(LPVOID lParam)
 					addrBuff[index] = tempIp;
 				}
 
-				for (int a = 0; a < *int32Buff; a++) {
+				for (int a = 0; a < int32Buff; a++) {
 					p->addConnection(addrBuff[a], pingBuff[a]);
 					char str[64];
 					inet_ntop(AF_INET6, addrBuff + a, str, 64);
@@ -365,13 +360,13 @@ bool Coordinator::userThread(LPVOID lParam)
 			}
 			case LEAVE_QUEUE:
 			{
-				std::cout << "Player " << *userId << " requested to leave the matchmaking queue." << std::endl << std::endl;
+				std::cout << "Player " << userId << " requested to leave the matchmaking queue." << std::endl << std::endl;
 
 				bool playerFound = false;
 				mtx.lock();
 				std::list<Player*>::iterator it;
 				for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
-					if ((*it)->id = *userId) {
+					if ((*it)->id = userId) {
 						m_matchmakingQueue.erase(it);
 						playerFound = true;
 						break;
@@ -398,7 +393,7 @@ bool Coordinator::userThread(LPVOID lParam)
 				sendData(userSocket, (char*)&buff, 4);
 				tasks.pop_front();
 
-				printf("Player %i left the queue.\n\n", *userId);
+				printf("Player %i left the queue.\n\n", userId);
 				break;
 			}
 			case USER_NEWGAME:
@@ -412,6 +407,7 @@ bool Coordinator::userThread(LPVOID lParam)
 		mtx.unlock();
 	}
 
+	m_connectedPlayerIDs.remove(userId);
 	closesocket(userSocket);
 	return false;
 }
@@ -466,8 +462,8 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 		}
 
 		if (FD_ISSET(serverSocket, &recieveSocket)) {
-			int32_t* int32Buff = new int32_t;
-			if (!recieveData(serverSocket, (char*)int32Buff, 4))
+			int32_t int32Buff;
+			if (!recieveData(serverSocket, (char*)&int32Buff, 4))
 			{
 				std::cout << "Connection lost" << std::endl << std::endl;
 				closesocket(serverSocket);
@@ -483,8 +479,45 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 				mtx.unlock();
 				return false;
 			}
-			switch (*int32Buff) {
-			
+			switch (int32Buff) {
+			case GAME_FINISHED:
+			{
+				std::cout << "A game has finished successfully." << std::endl << std::endl;
+
+				GameInfo game;
+
+				// Date is in 'DD/MM/YYYY' format plus a NULL character at the end
+				time_t now = time(0);
+				tm ltm;
+				localtime_s(&ltm, &now);
+				const char* format = "%02d/%02d/%04d";
+				sprintf_s(game.date, format, ltm.tm_mday, ltm.tm_mon + 1, ltm.tm_year + 1900);
+
+				// Game Duration
+				game.duration = 0;
+				recieveData(serverSocket, (char*)&game.duration, 4);
+
+				// Number of Participating Teams
+				game.numberOfTeams = 0;
+				recieveData(serverSocket, (char*)&game.numberOfTeams, 4);
+
+				// Team Scores
+				game.scores = new int32_t[game.numberOfTeams];
+				recieveData(serverSocket, (char*)game.scores, game.numberOfTeams * 4);
+
+				// Number of participants in each team
+				game.numbersOfParticipants = new int32_t[game.numberOfTeams];
+				recieveData(serverSocket, (char*)game.numbersOfParticipants, game.numberOfTeams * 4);
+
+				// Participant IDs
+				game.participants = new int32_t*[game.numberOfTeams];
+				for (int t = 0; t < game.numberOfTeams; t++) {
+					game.participants[t] = new int32_t[game.numbersOfParticipants[t]];
+					recieveData(serverSocket, (char*)game.participants[t], game.numbersOfParticipants[t] * 4);
+				}
+				
+				m_db->addGame(game);
+			}
 			}
 		}
 		mtx.lock();

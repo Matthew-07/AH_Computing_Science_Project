@@ -68,10 +68,22 @@ bool Database::init() {
 		return false;
 	}
 
+	// Count Games
+	if (!loadQuery("countGames.sql", q_countGames)) {
+		std::cout << "Failed to load 'countGame' query." << std::endl << std::endl;
+		return false;
+	}
+
+	// Count Wins
+	if (!loadQuery("countWins.sql", q_countWins)) {
+		std::cout << "Failed to load 'countWins' query." << std::endl << std::endl;
+		return false;
+	}
+
 	return true;
 }
 
-int Database::addUser(std::string username, std::string password)
+int32_t Database::addUser(std::string username, std::string password)
 {
 	// Create a temporary connection for insert
 	sqlite3 *tempdb;
@@ -112,7 +124,7 @@ int Database::addUser(std::string username, std::string password)
 	return userId;
 }
 
-int Database::logIn(std::string username, std::string password) {
+int32_t Database::logIn(std::string username, std::string password) {
 	char buff[512]; // Buffer must be large enough to hold entire query
 
 	sprintf_s(buff, q_checkLogIn.c_str(), username.c_str(), password.c_str());
@@ -130,8 +142,6 @@ int Database::logIn(std::string username, std::string password) {
 		return -3;
 	}
 
-	std::cout << "Player " << userId << " connected." << std::endl << std::endl;
-
 	return userId;
 }
 
@@ -144,7 +154,7 @@ bool Database::addGame(GameInfo &info)
 	char buff[512];
 	char* err;
 
-	sprintf_s(buff, q_addGame.c_str(), info.date, info.gameDuration);
+	sprintf_s(buff, q_addGame.c_str(), info.date, info.duration);
 	sqlite3_exec(tempdb, buff, NULL, NULL, &err);
 
 	if (err != NULL) {
@@ -161,16 +171,64 @@ bool Database::addGame(GameInfo &info)
 	for (int t = 0; t < info.numberOfTeams; t++) {
 		sprintf_s(buff, q_addTeam.c_str(), gameId, info.scores[t]);
 
+		sqlite3_exec(tempdb, buff, NULL, NULL, &err);
+
+		if (err != NULL) {
+			// Failed to run query
+			std::cout << buff << "\n" << err << "\n";
+			return false;
+		}
+
 		int teamId = sqlite3_last_insert_rowid(tempdb);
 
-		for (int p = 0; p < info.numberOfParticipants[t]; p++) {
+		for (int p = 0; p < info.numbersOfParticipants[t]; p++) {
 			ZeroMemory(buff, 512);
 			sprintf_s(buff, q_addParticipant.c_str(), info.participants[t][p], teamId);
+
+			sqlite3_exec(tempdb, buff, NULL, NULL, &err);
+
+			if (err != NULL) {
+				// Failed to run query
+				std::cout << buff << "\n" << err << "\n";
+				return false;
+			}
 		}
 
 		ZeroMemory(buff, 512);
 	}
 
+	return true;
+}
+
+bool Database::getUserGameInfo(int32_t userId, int32_t *numberOfGames, int32_t *numberOfWins)
+{
+	char buff[512]; // Buffer must be large enough to hold entire query
+
+	sprintf_s(buff, q_countGames.c_str(), userId);
+
+	char* err = NULL;
+
+	sqlite3_exec(db, buff, returnIntCallback, numberOfGames, &err);
+
+	if (err != NULL) {
+		// Failed to run query
+		std::cout << buff << "\n" << err << "\n";
+		return false;
+	}
+
+	ZeroMemory(buff, 512);
+
+	sprintf_s(buff, q_countWins.c_str(), userId);
+
+	err = NULL;
+
+	sqlite3_exec(db, buff, returnIntCallback, numberOfWins, &err);
+
+	if (err != NULL) {
+		// Failed to run query
+		std::cout << buff << "\n" << err << "\n";
+		return false;
+	}
 	return true;
 }
 

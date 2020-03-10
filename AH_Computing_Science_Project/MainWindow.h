@@ -45,6 +45,8 @@ private:
 	std::chrono::steady_clock::time_point findGameTimer;
 
 	int32_t m_userId;
+	int32_t m_numberOfGames;
+	int32_t m_numberOfWins;
 
 };
 

@@ -19,15 +19,15 @@
 // Data that is sent to the client
 struct PlayerData {
 public:
-	float pos[2];
-	float targetPos[2];
+	float pos[2] = { 0,0 };
+	float targetPos[2] = { 0,0 };
 
-	int32_t shieldDuration;
-	int32_t stoneDuration;
+	int32_t shieldDuration = 0;
+	int32_t stoneDuration = 0;
 
-	int32_t cooldowns[5];
-	int32_t id;	
-	int32_t team;
+	int32_t cooldowns[5] = { 0,0,0,0,0 };
+	int32_t id = -1;	
+	int32_t team = -1;
 };
 
 // Struct for storing information about the player
@@ -35,50 +35,57 @@ struct Player {
 public:	
 	bool isAlive;
 
-	float oldPos[2];
+	float oldPos[2] = { 0,0 };
 
-	PlayerData data;	
+	PlayerData data = PlayerData();	
 };
 
 struct ShockwaveData {
-	float pos[2];
-	float dest[2];
-	float start[2];
+	float pos[2] = { 0,0 };
+	float dest[2] = { 0,0 };
+	float start[2] = { 0,0 };
 
-	int32_t team;
+	int32_t team = -1;
 };
 
 struct Shockwave {
-	float oldPos[2];
-	ShockwaveData data;	
+	float oldPos[2] = { 0,0 };
+	ShockwaveData data = ShockwaveData();	
 };
 
 struct DaggerData {
-	float pos[2];
-	int32_t targetId;	
-	int32_t lifetime;
+	float pos[2] = { 0,0 };
+	int32_t targetId = -1;	
+	int32_t lifetime = 0;
 
-	int32_t team;
+	int32_t team = -1;
 };
 
 struct Dagger {
-	float oldPos[2];
-	DaggerData data;	
+	float oldPos[2] = { 0,0 };
+	DaggerData data = DaggerData();	
 
-	int32_t senderId;
-	int32_t senderTeam;
+	int32_t senderId = -1;
 };
 
 union data64 {
 	float f[2];
-	int32_t i[2];
+	int32_t i[2] = { 0,0 };
 };
 
 struct Input {
 public:
-	int32_t playerId;
-	int32_t type;
-	data64 data; // Up to two 4 byte pieces of data
+	int32_t playerId = -1;
+	int32_t type = -1;
+	data64 data = data64(); // Up to two 4 byte pieces of data
+};
+
+struct GameResult {
+	int32_t duration;
+	int32_t numberOfTeams;
+	int32_t* teamScores = NULL;
+	int32_t* numbersOfParticipants = NULL;
+	int32_t** participantIDs = NULL;
 };
 
 // Each 'Logic' Object will represent a game currently being played.
@@ -109,6 +116,8 @@ public:
 	int32_t getNumberOfTeams() { return m_numberOfTeams; }
 	int32_t* getPlayerIds() { return m_playerIds; }
 	int32_t* getPlayerTeams() { return m_playerTeams; }	
+
+	void endGame(GameResult &results);
 
 private:
 	void startRound();	
@@ -168,20 +177,20 @@ inline float calculateDistance(float* point1, float* point2)
 
 const int32_t	TICKS_PER_SECOND = 64;
 
-const int32_t	MAX_SCORE = 15;
+const int32_t	MAX_SCORE = 5;
 
 const float		PLAYER_SPEED = 60;
 const float		PLAYER_SPEED_PER_TICK = PLAYER_SPEED / TICKS_PER_SECOND;
 
-const float		SHOCKWAVE_SPEED = 300;
+const float		SHOCKWAVE_SPEED = 450;
 const float		SHOCKWAVE_SPEED_PER_TICK = SHOCKWAVE_SPEED / TICKS_PER_SECOND;
-const int32_t	SHOCKWAVE_RANGE = 1000;
+const int32_t	SHOCKWAVE_RANGE = 500;
 const int32_t	SHOCKWAVE_COLLISION_SIZE = 35;
 const int32_t	SHOCKWAVE_COOLDOWN = 160;
 // A shockwave takes range/speed time to finish and can at most be produced once every cooldown ticks.
-const int32_t	MAX_SHOCKWAVES = ceil(SHOCKWAVE_RANGE / SHOCKWAVE_SPEED / SHOCKWAVE_COOLDOWN);
+const int32_t	MAX_SHOCKWAVES = (int32_t) ceil((double) SHOCKWAVE_RANGE / (double)SHOCKWAVE_SPEED / (double) SHOCKWAVE_COOLDOWN);
 
-const float		DAGGER_SPEED = 250;
+const float		DAGGER_SPEED = 300;
 const float		DAGGER_SPEED_PER_TICK = DAGGER_SPEED / TICKS_PER_SECOND;
 const int32_t	DAGGER_RANGE = 800;
 const int32_t	DAGGER_MAX_LIFETIME = 600;

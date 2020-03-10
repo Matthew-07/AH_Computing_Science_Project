@@ -10,7 +10,7 @@
 #define START_GAME		10001
 
 // Server -> Coordinator
-#define SERVER_READY 	20001
+#define GAME_FINISHED 	20001
 
 
 bool inline sendData(SOCKET& s, char* buff, int dataLength)

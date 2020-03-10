@@ -15,6 +15,7 @@ int main() {
 	}
 
 	myDatabase.addUser("test", "password");
+	myDatabase.addUser("test2", "password");
 
 	std::cout << "Connected to database" << std::endl;
 	

@@ -48,7 +48,6 @@ bool Network::init() {
 		MessageBoxA(NULL, "Failed to bind UDP Socket.", "Error", NULL);
 		return false;
 	}
-
 	return true;
 }
 
@@ -126,7 +125,6 @@ bool Network::startConnection()
 		WSACleanup();
 		return false;
 	}
-
 	return true;
 }
 
@@ -162,6 +160,14 @@ int Network::logIn(bool newAccount, std::string username, std::string password)
 	delete returnBuffer;
 		
 	return id;
+}
+
+void Network::recieveProfileData(int32_t* numberOfGames, int32_t* numberOfWins)
+{
+	int32_t data[2];
+	recieveData(m_GCSocket, (char*)data, 8);
+	*numberOfGames = data[0];
+	*numberOfWins = data[1];
 }
 
 bool Network::joinMatchmakingQueue()

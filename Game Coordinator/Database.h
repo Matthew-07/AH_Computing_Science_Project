@@ -9,17 +9,16 @@
 // Use a struct to pass information about the game to make code more readable
 struct GameInfo {
 public:
-	int* teams;
-	int* scores;
-	int numberOfTeams;
+	int32_t* scores;
+	int32_t numberOfTeams;
 
 
-	int** participants;	
-	int* numberOfParticipants; // Array storing the number of participants in each team.
+	int32_t** participants;	
+	int32_t* numbersOfParticipants; // Array storing the number of participants in each team.
 
 
-	int gameDuration;
-	char * date;
+	int32_t duration;
+	char date[11]; // 8 digits, 2 '/' chars and a null character
 };
 
 class Database
@@ -27,9 +26,10 @@ class Database
 public:
 	bool init();
 
-	int addUser(std::string username, std::string password);
-	int logIn(std::string username, std::string password);
+	int32_t addUser(std::string username, std::string password);
+	int32_t logIn(std::string username, std::string password);
 	bool addGame(GameInfo &info);
+	bool getUserGameInfo(int32_t userId, int32_t* numberOfGames, int32_t* numberOfWins);
 
 	~Database();
 	
@@ -51,6 +51,9 @@ private:
 	std::string q_addGame;
 	std::string q_addTeam;
 	std::string q_addParticipant;
+
+	std::string q_countGames;
+	std::string q_countWins;
 
 
 };

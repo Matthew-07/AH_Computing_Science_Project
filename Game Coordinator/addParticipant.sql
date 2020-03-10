@@ -1,4 +1,4 @@
-INSERT INTO participants VALUES (
+INSERT INTO particpations VALUES (
 %i,
 %i
 );

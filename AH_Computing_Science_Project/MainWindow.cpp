@@ -105,6 +105,14 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if (lParam != NULL) {
 				m_userId = *(int32_t*)lParam;
 			}
+
+			network->recieveProfileData(&m_numberOfGames, &m_numberOfWins);
+			OutputDebugStringA("Number of games: ");
+			OutputDebugStringA(std::to_string(m_numberOfGames).c_str());
+			OutputDebugStringA(".\n");
+			OutputDebugStringA("Number of wins: ");
+			OutputDebugStringA(std::to_string(m_numberOfWins).c_str());
+			OutputDebugStringA(".\n");
 		}
 		else {
 			windowShown = false;
