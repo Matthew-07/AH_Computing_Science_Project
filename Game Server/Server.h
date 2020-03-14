@@ -21,8 +21,6 @@ struct ConnectedPlayer {
 struct Game {
 	Logic *logic = NULL;
 	std::list<ConnectedPlayer> players;// = std::list<ConnectedPlayer>();
-
-	std::mutex mutex;
 };
 
 class Server {

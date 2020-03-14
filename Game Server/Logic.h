@@ -56,7 +56,6 @@ struct Shockwave {
 struct DaggerData {
 	float pos[2] = { 0,0 };
 	int32_t targetId = -1;	
-	int32_t lifetime = 0;
 
 	int32_t team = -1;
 };
@@ -64,6 +63,7 @@ struct DaggerData {
 struct Dagger {
 	float oldPos[2] = { 0,0 };
 	DaggerData data = DaggerData();	
+	int32_t lifetime = 0;
 
 	int32_t senderId = -1;
 };
@@ -192,8 +192,7 @@ const int32_t	MAX_SHOCKWAVES = (int32_t) ceil((double) SHOCKWAVE_RANGE / (double
 
 const float		DAGGER_SPEED = 300;
 const float		DAGGER_SPEED_PER_TICK = DAGGER_SPEED / TICKS_PER_SECOND;
-const int32_t	DAGGER_RANGE = 800;
-const int32_t	DAGGER_MAX_LIFETIME = 600;
+const int32_t	DAGGER_MAX_LIFETIME = TICKS_PER_SECOND * 20; // Maximum time a dagger can exist for
 const int32_t	DAGGER_COLLISION_SIZE = 36;
 const int32_t	DAGGER_COOLDOWN = 200;
 const int32_t	MAX_DAGGERS = DAGGER_MAX_LIFETIME / DAGGER_COOLDOWN;
@@ -202,6 +201,7 @@ const int32_t	SHIELD_DURATION = 12;
 const int32_t	SHIELD_COOLDOWN = 160;
 
 const int32_t	BLINK_COOLDOWN = 120;
+const int32_t	BLINK_RANGE = 800;
 
 const int32_t	STONE_DURATION = 300;
 const int32_t	STONE_COOLDOWN = 600;

@@ -185,7 +185,7 @@ bool Server::start()
 
 				Game newGame;
 				newGame.logic = &logic;
-				newGame.players = {};
+				newGame.players;
 
 				int32_t index = 0;
 
@@ -301,7 +301,7 @@ bool Server::recievePackets()
 			ZeroMemory(buff, 32);
 			inet_ntop(AF_INET6, &si_other.sin6_addr, buff, 32);
 			printf(" Received packet from % s: % d\n ", buff, ntohs(si_other.sin6_port));
-
+			delete[] buff;
 			counter = 0;
 		}
 
@@ -311,6 +311,8 @@ bool Server::recievePackets()
 			printf(" sendto() failed with error code : % d ", WSAGetLastError());
 			exit(EXIT_FAILURE);
 		}
+
+		
 
 		counter++;
 	}
@@ -375,7 +377,6 @@ bool Server::gameThread(Game* game)
 	auto timePerTick = std::chrono::microseconds(1000000 / TICKS_PER_SECOND);
 
 	while (true) {	
-		game->mutex.lock();
 
 		FD_ZERO(&inputSockets);
 		/*if (game->players.size() > 0) {
@@ -396,7 +397,6 @@ bool Server::gameThread(Game* game)
 
 		if (select(0, &inputSockets, NULL, NULL, &waitTime) == SOCKET_ERROR) {
 			int res = WSAGetLastError();
-			game->mutex.unlock();
 			std::cout << "Failed to check for player input with error: " << res << "." << std::endl;			
 			getchar();
 			continue;
@@ -406,7 +406,6 @@ bool Server::gameThread(Game* game)
 			if (FD_ISSET(p.socket, &inputSockets)) {
 				Input input;
 				if (!recieveData(p.socket, (char*)&input, sizeof(input))) {
-					game->mutex.unlock();
 					std::cout << "Failed to recieve player input." << std::endl;
 					return false;
 				}
@@ -418,7 +417,6 @@ bool Server::gameThread(Game* game)
 			int32_t result = game->logic->tick(playerInputs);
 			if (result >= 0) {
 				// The game finished, team (result) won.
-				game->mutex.unlock();
 				GameResult result;
 				auto endTime = std::chrono::steady_clock::now();
 				result.duration = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
@@ -434,6 +432,9 @@ bool Server::gameThread(Game* game)
 					}
 					iter++;
 				}
+
+				delete[] buffer;
+
 				return true;
 			}
 			else if (result == -2) {
@@ -446,7 +447,6 @@ bool Server::gameThread(Game* game)
 
 				if (gameStateSize > buffSize) {
 					std::cout << "Gamestate larger than buffer!" << std::endl;
-					game->mutex.unlock();
 					return false;
 				}
 
@@ -461,7 +461,6 @@ bool Server::gameThread(Game* game)
 				lastTick = std::chrono::steady_clock::now();
 			}
 		}
-		game->mutex.unlock();
 	}
 	return false;
 }
@@ -566,9 +565,7 @@ bool Server::userThread(LPVOID clientSocket)
 
 				p.address = addr;
 
-				game->mutex.lock();
 				game->players.push_back(p);
-				game->mutex.unlock();
 
 				locatingGame = false;
 				break;

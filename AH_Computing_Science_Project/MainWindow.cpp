@@ -102,17 +102,18 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		if (wParam == SW_SHOW) {
 			windowShown = true;
-			if (lParam != NULL) {
+			if (lParam > 0) {
 				m_userId = *(int32_t*)lParam;
-			}
 
-			network->recieveProfileData(&m_numberOfGames, &m_numberOfWins);
-			OutputDebugStringA("Number of games: ");
-			OutputDebugStringA(std::to_string(m_numberOfGames).c_str());
-			OutputDebugStringA(".\n");
-			OutputDebugStringA("Number of wins: ");
-			OutputDebugStringA(std::to_string(m_numberOfWins).c_str());
-			OutputDebugStringA(".\n");
+				network->recieveProfileData(&m_numberOfGames, &m_numberOfWins);
+
+				OutputDebugStringA("Number of games: ");
+				OutputDebugStringA(std::to_string(m_numberOfGames).c_str());
+				OutputDebugStringA(".\n");
+				OutputDebugStringA("Number of wins: ");
+				OutputDebugStringA(std::to_string(m_numberOfWins).c_str());
+				OutputDebugStringA(".\n");
+			}
 		}
 		else {
 			windowShown = false;
@@ -125,10 +126,6 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if (findingGame) {
 				if ((HWND)lParam == m_cancelButton) {
 					network->leaveMatchmakingQueue();
-					SendMessage(m_hwnd, CA_SHOWMAIN, SW_SHOW, NULL);
-					ShowWindow(m_cancelButton, SW_HIDE);
-					findingGame = false;
-					
 				}
 			}
 			else{
@@ -162,11 +159,17 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 							}
 							else {
 								InvalidateRect(m_hwnd, NULL, false);
-								if (network->checkForGame(m_userId)) {
+								int res = network->checkForGame(m_userId);		
+								if (res == 1) {
+									SendMessage(m_hwnd, CA_SHOWMAIN, SW_SHOW, NULL);
+									ShowWindow(m_cancelButton, SW_HIDE);
+									findingGame = false;
+								}
+								else if (res == 2) {
 									findingGame = false;
 									ShowWindow(m_gameWindowHandle, SW_SHOW);
 									SendMessage(m_gameWindowHandle, CA_SHOWGAME, SW_SHOW, (LPARAM) &m_userId);
-								}
+								}								
 								Sleep(1);
 							}
 						}

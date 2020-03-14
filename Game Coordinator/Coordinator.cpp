@@ -323,10 +323,10 @@ bool Coordinator::userThread(LPVOID lParam)
 					continue;
 				}
 
-				Player * p = new Player();
-				p->id = userId;
-				p->playerSocket = &userSocket;
-				p->threadTasks = &tasks;
+				Player p;
+				p.id = userId;
+				p.playerSocket = &userSocket;
+				p.threadTasks = &tasks;
 				std::cout << "Player " << userId << " requested to join the matchmaking queue:" << std::endl;
 
 				// Insertion sort
@@ -345,22 +345,23 @@ bool Coordinator::userThread(LPVOID lParam)
 				}
 
 				for (int a = 0; a < int32Buff; a++) {
-					p->addConnection(addrBuff[a], pingBuff[a]);
+					p.addConnection(addrBuff[a], pingBuff[a]);
 					char str[64];
 					inet_ntop(AF_INET6, addrBuff + a, str, 64);
 					std::cout << str << ":\t" << pingBuff[a] << "\n";
 				}
 
+				delete[] pingBuff, addrBuff;
+
 				mtx.lock();
-				m_matchmakingQueue.push_back(p);
+				m_matchmakingQueue.push_back(&p);
 				mtx.unlock();
 
 				std::cout << std::endl;
 				break;
 			}
 			case LEAVE_QUEUE:
-			{
-				std::cout << "Player " << userId << " requested to leave the matchmaking queue." << std::endl << std::endl;
+			{				std::cout << "Player " << userId << " requested to leave the matchmaking queue." << std::endl << std::endl;
 
 				bool playerFound = false;
 				mtx.lock();
@@ -373,11 +374,17 @@ bool Coordinator::userThread(LPVOID lParam)
 					}
 				}
 				mtx.unlock();
-				if (!playerFound) {
-					// Player was not in queue or a match was already found, doesn't matter.
-					int32_t buff = -1;
+				if (playerFound) {
+					// Player Successfully left the queue
+					int32_t buff = LEFT_QUEUE;
 					sendData(userSocket, (char*)&buff, 4);
+
+					printf("Player %i left the queue.\n\n", userId);
 				}
+				break;
+			}
+			case SWITCH_ACCOUNT:
+			{
 				break;
 			}
 			}
@@ -387,17 +394,11 @@ bool Coordinator::userThread(LPVOID lParam)
 		mtx.lock();
 		while (tasks.size() > 0) {
 			switch (tasks.front().type) {
-			case USER_LEAVE:
-			{
-				int32_t buff = 0;
-				sendData(userSocket, (char*)&buff, 4);
-				tasks.pop_front();
-
-				printf("Player %i left the queue.\n\n", userId);
-				break;
-			}
 			case USER_NEWGAME:
 			{
+				int32_t buff = GAME_FOUND;
+				sendData(userSocket, (char*)&buff, 4);
+
 				sendData(userSocket, (char*)tasks.front().data, sizeof(*(IN6_ADDR*)tasks.front().data));
 				tasks.pop_front();
 				break;
@@ -517,6 +518,12 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 				}
 				
 				m_db->addGame(game);
+
+				delete[] game.scores;
+				for (int t = 0; t < game.numberOfTeams; t++) {
+					delete[] game.participants[t];
+				}
+				delete[] game.participants;
 			}
 			}
 		}
@@ -573,119 +580,104 @@ bool Coordinator::matchmakingThread()
 		mtx.unlock();
 		Sleep(2);
 		mtx.lock();
-		
-		if (m_matchmakingQueue.size() < 2) {
-			/*if (m_matchmakingQueue.size() == 1) {				
-				if (m_matchmakingQueue.front()->shouldLeave) {
-					COMMAND c;
-					c.type = USER_LEAVE;
-					m_matchmakingQueue.front()->threadTasks->push_back(c);
-					m_matchmakingQueue.pop_front();
-				}
-				Sleep(100);
-			}*/			
-		}
-		else {
-			/*
-			Two players A and B.
-			Initally player A is first in the queue and player B is second.
-			Whilst keeping player A the same, go through each player in the queue and see if a game can be made between the two.
-			If none can be made, the second player in the queue becomes player A and the process repeats.
-			*/			
-			playerA = m_matchmakingQueue.begin();
-			playerB = std::next(m_matchmakingQueue.begin(), 1);
-			foundGame = false;
-			while (playerA != std::prev(m_matchmakingQueue.end(),1)){
-				while (playerB != m_matchmakingQueue.end()){
-					// Try to match players in a game.
 
-					// For now, all that is needed a server which they both have a low ping with.
-					for (int s1 = 0; s1 < (*playerA)->pings.size(); s1++) {
-						if ((*playerA)->pings[s1].ping < 0 || (*playerA)->pings[s1].ping > 120) continue;
-						for (int s2 = 0; s2 < (*playerB)->pings.size(); s2++) {							
-							bool serverIsSame = true;
-							for (int w = 0; w < 8; w++) {
-								if ((*playerA)->pings[s1].serverIP.u.Word[w] != (*playerB)->pings[s2].serverIP.u.Word[w]) {
-									serverIsSame = false;
-									break;
-								}
-							}							
-							if (serverIsSame) {
-								if ((*playerB)->pings[s2].ping < 0 || (*playerB)->pings[s2].ping > 120) {
-									break;
-								}
-								else {
-									// Create game
-									// First request server to host game
-									// Find server object
-									bool serverFound = false;
-									std::list<Server*>::iterator serverIt;
-									for (serverIt = m_servers.begin(); serverIt != m_servers.end(); serverIt++ ) {
-										bool serverIsSame = true;
-										for (int w = 0; w < 8; w++) {
-											if ((*playerA)->pings[s1].serverIP.u.Word[w] != (*serverIt)->ip->u.Word[w]) {
-												serverIsSame = false;
-												break;
-											}
-										}
-										if (serverIsSame) {
-											serverFound = true;
-											break;
-										}										
-									}
+		/*
+		Two players A and B.
+		Initally player A is first in the queue and player B is second.
+		Whilst keeping player A the same, go through each player in the queue and see if a game can be made between the two.
+		If none can be made, the second player in the queue becomes player A and the process repeats.
+		*/			
+		playerA = m_matchmakingQueue.begin();
+		playerB = std::next(m_matchmakingQueue.begin(), 1);
+		foundGame = false;
+		while (playerA != std::prev(m_matchmakingQueue.end(),1)){
+			while (playerB != m_matchmakingQueue.end()){
+				// Try to match players in a game.
 
-									if (!serverFound) {
-										// Server must have been disconnected, don't try to use it again.
-										(*playerA)->pings[s1].ping = -1;
-										(*playerB)->pings[s2].ping = -1;
-										continue;
-									}
-
-									// Notify server about the game
-									COMMAND c;
-
-									GAME game;
-									game.numberOfPlayers = 2;
-									game.numberOfTeams = 2;
-									game.userIds = new int32_t[2];
-									game.userIds[0] = (*playerA)->id;
-									game.userIds[1] = (*playerB)->id;
-									game.teams = new int32_t[2];
-									game.teams[0] = 0;
-									game.teams[1] = 1;
-									c.type = SERVER_NEWGAME;
-									c.data = &game;
-
-									(*serverIt)->threadTasks->push_back(c);
-
-									// Notify players they have been found a game.									
-									c.type = USER_NEWGAME;
-									c.data = (*serverIt)->ip;
-									(*playerA)->threadTasks->push_back(c);
-									(*playerB)->threadTasks->push_back(c);
-
-									char ipBuff[64];
-									inet_ntop(AF_INET6, (*serverIt)->ip, ipBuff, 64);
-									printf("A game was created between players %i and %i\non server %s.\n", (*playerA)->id, (*playerB)->id, ipBuff);
-
-									// Remove players from matchmaking queue
-									delete (*playerA);
-									delete (*playerB);
-									m_matchmakingQueue.erase(playerA++);
-									m_matchmakingQueue.erase(playerB++);
-									foundGame = true;
-								}		
+				// For now, all that is needed a server which they both have a low ping with.
+				for (int s1 = 0; s1 < (*playerA)->pings.size(); s1++) {
+					if ((*playerA)->pings[s1].ping < 0 || (*playerA)->pings[s1].ping > 120) continue;
+					for (int s2 = 0; s2 < (*playerB)->pings.size(); s2++) {							
+						bool serverIsSame = true;
+						for (int w = 0; w < 8; w++) {
+							if ((*playerA)->pings[s1].serverIP.u.Word[w] != (*playerB)->pings[s2].serverIP.u.Word[w]) {
+								serverIsSame = false;
+								break;
 							}
-							if (foundGame) break;
+						}							
+						if (serverIsSame) {
+							if ((*playerB)->pings[s2].ping < 0 || (*playerB)->pings[s2].ping > 120) {
+								break;
+							}
+							else {
+								// Create game
+								// First request server to host game
+								// Find server object
+								bool serverFound = false;
+								std::list<Server*>::iterator serverIt;
+								for (serverIt = m_servers.begin(); serverIt != m_servers.end(); serverIt++ ) {
+									bool serverIsSame = true;
+									for (int w = 0; w < 8; w++) {
+										if ((*playerA)->pings[s1].serverIP.u.Word[w] != (*serverIt)->ip->u.Word[w]) {
+											serverIsSame = false;
+											break;
+										}
+									}
+									if (serverIsSame) {
+										serverFound = true;
+										break;
+									}										
+								}
+
+								if (!serverFound) {
+									// Server must have been disconnected, don't try to use it again.
+									(*playerA)->pings[s1].ping = -1;
+									(*playerB)->pings[s2].ping = -1;
+									continue;
+								}
+
+								// Notify server about the game
+								COMMAND c;
+
+								GAME game;
+								game.numberOfPlayers = 2;
+								game.numberOfTeams = 2;
+								game.userIds = new int32_t[2];
+								game.userIds[0] = (*playerA)->id;
+								game.userIds[1] = (*playerB)->id;
+								game.teams = new int32_t[2];
+								game.teams[0] = 0;
+								game.teams[1] = 1;
+								c.type = SERVER_NEWGAME;
+								c.data = &game;
+
+								(*serverIt)->threadTasks->push_back(c);
+
+								// Notify players they have been found a game.									
+								c.type = USER_NEWGAME;
+								c.data = (*serverIt)->ip;
+								(*playerA)->threadTasks->push_back(c);
+								(*playerB)->threadTasks->push_back(c);
+
+								char ipBuff[64];
+								inet_ntop(AF_INET6, (*serverIt)->ip, ipBuff, 64);
+								printf("A game was created between players %i and %i\non server %s.\n", (*playerA)->id, (*playerB)->id, ipBuff);
+
+								// Remove players from matchmaking queue
+								m_matchmakingQueue.erase(playerA++);
+								m_matchmakingQueue.erase(playerB++);
+								foundGame = true;
+							}		
 						}
 						if (foundGame) break;
 					}
 					if (foundGame) break;
-					++playerB;
 				}
 				if (foundGame) break;
-				++playerA;
+				++playerB;
 			}
+			if (foundGame) break;
+			++playerA;
 		}		
 	}
 	return false;

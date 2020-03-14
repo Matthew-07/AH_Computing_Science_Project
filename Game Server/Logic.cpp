@@ -24,8 +24,9 @@ Logic::Logic(int32_t numberOfPlayers, int32_t numberOfTeams, int32_t* playerIds,
 
 	tickNumber = 0;
 
-	m_daggers = {};// std::list<Dagger>();
-	m_shockwaves = {};// std::list<Shockwave>();
+	m_daggers = std::list<Dagger>();
+
+	m_shockwaves = std::list<Shockwave>();
 
 	startRound();
 
@@ -38,6 +39,13 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 	if (m_daggers.size() > 0) {
 		std::list<Dagger>::iterator dagger = m_daggers.begin();
 		while (dagger != m_daggers.end()) {
+
+			dagger->lifetime++;
+			if (dagger->lifetime > DAGGER_MAX_LIFETIME) {
+				m_daggers.erase(dagger++);
+				continue;
+			}
+
 			for (int p = 0; p < m_numberOfPlayers; p++) {
 				if (m_players[p].data.id == dagger->data.targetId) {
 					if (m_players[p].isAlive) {
@@ -108,7 +116,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 
 			if (m_daggers.size() > 0) {
 				std::list<Dagger>::iterator dagger = m_daggers.begin();
-				while (dagger != m_daggers.end()) {
+				while (dagger != m_daggers.end()) {					
 					if (calculateCollision(
 						m_players[p].oldPos,
 						m_players[p].data.pos,
@@ -221,7 +229,8 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 		}
 		case INP_BLINK:
 		{
-			if (m_players[playerIndex].data.cooldowns[BLINK_INDEX] == 0 && checkBounds(playerInputs.front().data.f)) {
+			if (m_players[playerIndex].data.cooldowns[BLINK_INDEX] == 0 && checkBounds(playerInputs.front().data.f) 
+				&& calculateDistance(m_players[playerIndex].data.pos, playerInputs.front().data.f) < BLINK_RANGE) {
 
 				m_players[playerIndex].data.stoneDuration = 0; // Any action cancels stone form
 				m_players[playerIndex].data.cooldowns[BLINK_INDEX] = BLINK_COOLDOWN;
@@ -312,7 +321,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				d.data.targetId = playerInputs.front().data.i[0];
 				d.senderId = playerInputs.front().playerId;
 
-				d.data.lifetime = 0;
+				d.lifetime = 0;
 
 				d.data.team = m_players[playerIndex].data.team;
 
@@ -347,6 +356,8 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 
 int32_t Logic::getMaxGamestateSize() // The gamestate will not be larger than this
 {
+	/* The wierd casting is just to avoid compiler warnings about integer overflow 
+	as sizeof() returns a 64 bit int.*/
 	return (int32_t)
 		((UINT64)m_numberOfPlayers * sizeof(PlayerData)
 		+ (UINT64)m_numberOfPlayers * MAX_DAGGERS *  ((int32_t) sizeof(DaggerData))

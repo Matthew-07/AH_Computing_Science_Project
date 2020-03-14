@@ -224,27 +224,26 @@ bool Network::joinMatchmakingQueue()
 
 bool Network::leaveMatchmakingQueue()
 {
-	int32_t* buffer = new int32_t;
-	*buffer = LEAVE_QUEUE;
-	if (!sendData(m_GCSocket, (char*)buffer, sizeof(*buffer))) {
+	int32_t buffer = LEAVE_QUEUE;
+	if (!sendData(m_GCSocket, (char*)&buffer, sizeof(buffer))) {
 		MessageBoxA(NULL, "Failed to send leave queue request.", "Error", NULL);
 		return false;
 	}
 
-	if (!recieveData(m_GCSocket, (char*)buffer, sizeof(*buffer))) {
-		MessageBoxA(NULL, "Failed to recieve leave queue responce.", "Error", NULL);
-		return false;
-	}
+	//if (!recieveData(m_GCSocket, (char*)&buffer, sizeof(buffer))) {
+	//	MessageBoxA(NULL, "Failed to recieve leave queue responce.", "Error", NULL);
+	//	return false;
+	//}
 
-	if (*buffer != 0) {
-		// A match has already been found
-		return false;
-	}
+	//if (buffer == GAME_FOUND) {
+	//	// A match has already been found
+	//	return false;
+	//}
 
 	return true;
 }
 
-bool Network::checkForGame(int32_t& userId)
+int32_t Network::checkForGame(int32_t& userId)
 {
 	fd_set recieveSocket;
 	FD_ZERO(&recieveSocket);
@@ -255,23 +254,33 @@ bool Network::checkForGame(int32_t& userId)
 	FD_SET(m_GCSocket, &recieveSocket);
 
 	if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
-		return false;
+		return -1;
 	}
 
 	if (FD_ISSET(m_GCSocket, &recieveSocket)) {
 		IN6_ADDR* ipBuff = new IN6_ADDR();
 
-		if (recieveData(m_GCSocket, (char*) ipBuff, sizeof(*ipBuff)) == SOCKET_ERROR) {
-			return false;
+		int32_t intBuff;
+		if (recieveData(m_GCSocket, (char*)&intBuff, sizeof(intBuff)) == SOCKET_ERROR) {
+			return -1;
+		}
+
+		if (intBuff == GAME_FOUND) {
+			if (recieveData(m_GCSocket, (char*)ipBuff, sizeof(*ipBuff)) == SOCKET_ERROR) {
+				return -1;
+			}
+		}
+		else if (intBuff == LEFT_QUEUE) {
+			return 1;
 		}
 
 		m_userId = userId;
 
 		if (joinGame(ipBuff))
-			return true;
+			return 2;
 	}
 
-	return false;
+	return 0;
 }
 
 bool Network::getGameInfo(int32_t* numberOfPlayers, int32_t* numberOfTeams, int32_t** playerIds, int32_t** playerTeams, int32_t* maxGamestateSize)

@@ -16,7 +16,7 @@ public:
 	void recieveProfileData(int32_t* numberOfGames, int32_t* numberOfWins);
 	bool joinMatchmakingQueue();
 	bool leaveMatchmakingQueue();
-	bool checkForGame(int32_t& userId);
+	int32_t checkForGame(int32_t& userId);
 
 	bool getGameInfo(int32_t *numberOfPlayers, int32_t *numberOfTeams, int32_t** playerIds, int32_t** playerTeams, int32_t* maxGamestateSize);
 	bool recievePacket(char * buffer);
