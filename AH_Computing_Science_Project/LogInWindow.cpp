@@ -148,15 +148,18 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				}
 
 				OutputDebugStringA(std::to_string(id).c_str());
-				OutputDebugStringA("\n");
+				OutputDebugStringA("\n");				
 
 				delete[] username, password;
 
 				if (id > 0) {				
 
 					// Login successful
-					SendMessage(m_parentHwnd, CA_SHOWMAIN, SW_SHOW, (LPARAM) &id);
-					ShowWindow(Window(), SW_HIDE);
+					AccountInfo info;
+					info.userId = id;
+					info.username = usernameStr;
+					SendMessage(m_parentHwnd, CA_SHOWMAIN, SW_SHOW, (LPARAM) &info);
+					ShowWindow(Window(), SW_HIDE);					
 				}
 				else {
 					if (newAccountMode) {
@@ -174,10 +177,12 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 						}
 						InvalidateRect(m_hwnd, NULL, false);
 					}
-				}
-
+				}				
 			}
 			else if ((HWND)lParam == m_switchModeButton) {
+				// Clear error message
+				m_errorText = L"";
+
 				if (newAccountMode) {
 					ShowWindow(m_confirmEdit, SW_HIDE);
 					// Clear control text

@@ -21,6 +21,9 @@
 #pragma comment(lib,"dwrite")
 
 #include <stdlib.h>
+#include <locale>
+#include <codecvt>
+
 #include <chrono>
 #include <thread>
 

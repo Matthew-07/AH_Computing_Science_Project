@@ -29,8 +29,8 @@ private:
 	void discardGraphicResources();
 
 	ID2D1HwndRenderTarget *pRenderTarget;
-	ID2D1SolidColorBrush *bBlack;
-	IDWriteTextFormat *pTitleTextFormat, *pMenuTextFormat;
+	ID2D1SolidColorBrush *bBlack, *bWhite;
+	IDWriteTextFormat *pTitleTextFormat, *pMenuTextFormat, * pProfileTextFormat;
 
 	RECT m_rect;
 
@@ -45,6 +45,7 @@ private:
 	std::chrono::steady_clock::time_point findGameTimer;
 
 	int32_t m_userId;
+	std::string m_username;
 	int32_t m_numberOfGames;
 	int32_t m_numberOfWins;
 

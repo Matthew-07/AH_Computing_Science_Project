@@ -34,7 +34,6 @@ bool Server::start()
 	m_UserListenSocket = INVALID_SOCKET;
 
 	// Create a SOCKET for the server to listen for client connections
-
 	m_UserListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 
 	if (m_UserListenSocket == INVALID_SOCKET) {
@@ -56,7 +55,10 @@ bool Server::start()
 
 	freeaddrinfo(result);
 
+	// Start thread to recieve packets and respond to packets for measuring ping
 	m_recievePacketsThread = new std::thread(&Server::recievePackets, this);
+
+	// Start thread to accecpt connections from users
 	m_userConnectionsThread = new std::thread(&Server::userConnectionsThread, this);
 
 
@@ -573,20 +575,6 @@ bool Server::userThread(LPVOID clientSocket)
 			}
 		}		
 	}
-
-	//while (true) {
-	//	bool gameRunning = false;
-	//	for (auto game : m_games) {
-	//		if (game->logic->checkForUser(userId)) {
-	//			gameRunning = true;
-	//			break;
-	//		}
-	//	}
-	//	if (!gameRunning) {
-	//		break;
-	//	}
-	//	Sleep(250);
-	//}
 
 	return true;
 }

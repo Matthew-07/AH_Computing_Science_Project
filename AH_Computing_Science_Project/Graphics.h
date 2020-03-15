@@ -9,6 +9,11 @@ class MainWindow;
 class LogInWindow;
 class GameWindow;
 
+struct AccountInfo {
+	int32_t userId;
+	std::string username;
+};
+
 // Class for handling graphics
 class Graphics {
 public:

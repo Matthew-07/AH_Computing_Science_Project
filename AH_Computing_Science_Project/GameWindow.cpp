@@ -23,7 +23,7 @@ GameWindow::GameWindow(Graphics* graphics, Network* nw)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		48.0f,
+		toPixels(48.0f),
 		L"en-uk",
 		&pScoreTextFormat
 	);
@@ -35,11 +35,22 @@ GameWindow::GameWindow(Graphics* graphics, Network* nw)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		24.0f,
+		toPixels(24.0f),
 		L"en-uk",
 		&pCooldownTextFormat
 	);
 	pCooldownTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		toPixels(18.0f),
+		L"en-uk",
+		&pFpsTextFormat
+	);
 }
 
 LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -207,6 +218,8 @@ bool GameWindow::startGame()
 
 	HACCEL hAccelTable = LoadAccelerators(m_inst, MAKEINTRESOURCE(IDR_ACCELERATOR1));
 
+	frameRateTimer = std::chrono::steady_clock::now();
+
 	while (true)
 	{
 		MSG msg;
@@ -255,102 +268,121 @@ void GameWindow::onPaint() {
 	// Don't draw the game until the first packet has been recieved.
 	if (packetRecieved) {
 
-		// Draw Window
-		float timeSinceLastPacket = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - packetTimer).count() / 1000000;
+// Draw Window
+float timeSinceLastPacket = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - packetTimer).count() / 1000000;
 
-		// Only extrapolate for up to 500ms, then just draw the same frame until more data arrives
-		if (timeSinceLastPacket > 0.5) {
-			timeSinceLastPacket = 0.5;
+// Only extrapolate for up to 500ms, then just draw the same frame until more data arrives
+if (timeSinceLastPacket > 0.5) {
+	timeSinceLastPacket = 0.5;
+}
+
+// Center camera on player while player is alive
+for (int p = 0; p < m_numberOfPlayers; p++) {
+	if (m_players[p].id == m_userId) {
+		m_camX = m_players[p].pos[0] - m_rect.right / 2;
+		m_camY = m_players[p].pos[1] - m_rect.bottom / 2;
+		break;
+	}
+}
+
+pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(-m_camX, -m_camY), m_mapSize, m_mapSize), bWhite);
+
+for (int p = 0; p < m_numberOfPlayers; p++) {
+
+	float newPos[2];
+	newPos[0] = m_players[p].pos[0];
+	newPos[1] = m_players[p].pos[1];
+	calculateMovement(newPos, m_players[p].targetPos, timeSinceLastPacket * PLAYER_SPEED);
+
+	if (m_players[p].id == m_userId) {
+		if (m_players[p].stoneDuration > 0) {
+			pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bStone);
 		}
+		else {
+			pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bPlayer);
 
-		// Center camera on player while player is alive
-		for (int p = 0; p < m_numberOfPlayers; p++) {
-			if (m_players[p].id == m_userId) {
-				m_camX = m_players[p].pos[0] - m_rect.right / 2;
-				m_camY = m_players[p].pos[1] - m_rect.bottom / 2;
-				break;
-			}
-		}
-
-		pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(-m_camX, -m_camY), m_mapSize,m_mapSize),bWhite);
-
-		for (int p = 0; p < m_numberOfPlayers; p++) {
-
-			float newPos[2];
-			newPos[0] = m_players[p].pos[0];
-			newPos[1] = m_players[p].pos[1];
-			calculateMovement(newPos, m_players[p].targetPos, timeSinceLastPacket * PLAYER_SPEED);
-
-			if (m_players[p].id == m_userId) {
-				if (m_players[p].stoneDuration > 0) {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bStone);
-				}
-				else {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bPlayer);
-
-					if (m_players[p].shieldDuration > 0) {
-						pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 26, 26), bShield, 5);
-					}
-				}				
-			}
-			else {				
-				if (m_players[p].stoneDuration > 0) {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bStone);
-				}
-				else {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), teamBrushes[m_players[p].team]);
-
-					if (m_players[p].shieldDuration > 0) {
-						pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 26, 26), bShield, 5);
-					}
-				}
-			}
-		}
-
-		for (auto shockwave : m_shockwaves) {
-
-			float newPos[2];
-			newPos[0] = shockwave.pos[0];
-			newPos[1] = shockwave.pos[1];
-			calculateMovement(newPos, shockwave.dest, timeSinceLastPacket * SHOCKWAVE_SPEED);
-
-			if (shockwave.team == m_userTeam) {
-				pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY),D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY),bProjectileAlly, 3);
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 5, 5), bProjectileAlly);
-			}
-			else {
-				pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY), D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), bProjectileEnemy, 3);
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 5, 5), bProjectileEnemy);
-			}
-		}
-
-		for (auto dagger : m_daggers) {
-
-			int32_t index = -1;
-
-			for (int p = 0; p < m_numberOfPlayers; p++) {
-				if (m_players[p].id == dagger.targetId) {
-					index = p;
-					break;
-				}
-			}
-			if (index >= 0) {
-
-				float newPos[2];
-				newPos[0] = dagger.pos[0];
-				newPos[1] = dagger.pos[1];
-				calculateMovement(newPos, m_players[index].pos, timeSinceLastPacket * DAGGER_SPEED);
-
-				if (dagger.team == m_userTeam) {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileAlly);
-				}
-				else {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileEnemy);
-				}
-
+			if (m_players[p].shieldDuration > 0) {
+				pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 26, 26), bShield, 5);
 			}
 		}
 	}
+	else {
+		if (m_players[p].stoneDuration > 0) {
+			pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), bStone);
+		}
+		else {
+			pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 28, 28), teamBrushes[m_players[p].team]);
+
+			if (m_players[p].shieldDuration > 0) {
+				pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 26, 26), bShield, 5);
+			}
+		}
+	}
+}
+
+for (auto shockwave : m_shockwaves) {
+
+	float newPos[2];
+	newPos[0] = shockwave.pos[0];
+	newPos[1] = shockwave.pos[1];
+	calculateMovement(newPos, shockwave.dest, timeSinceLastPacket * SHOCKWAVE_SPEED);
+
+	if (shockwave.team == m_userTeam) {
+		pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY), D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), bProjectileAlly, 3);
+		pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 5, 5), bProjectileAlly);
+	}
+	else {
+		pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY), D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), bProjectileEnemy, 3);
+		pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 5, 5), bProjectileEnemy);
+	}
+}
+
+for (auto dagger : m_daggers) {
+
+	int32_t index = -1;
+
+	for (int p = 0; p < m_numberOfPlayers; p++) {
+		if (m_players[p].id == dagger.targetId) {
+			index = p;
+			break;
+		}
+	}
+	if (index >= 0) {
+
+		float newPos[2];
+		newPos[0] = dagger.pos[0];
+		newPos[1] = dagger.pos[1];
+		calculateMovement(newPos, m_players[index].pos, timeSinceLastPacket * DAGGER_SPEED);
+
+		if (dagger.team == m_userTeam) {
+			pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileAlly);
+		}
+		else {
+			pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileEnemy);
+		}
+
+	}
+}
+	}
+
+	frameCounter++;
+	auto timeNow = std::chrono::steady_clock::now();
+	int32_t timeElapsed = std::chrono::duration_cast<std::chrono::microseconds>(timeNow - frameRateTimer).count();
+	if (timeElapsed >= 250000){
+		frameRate = frameCounter * 1000000 / timeElapsed;
+		frameRateTimer = timeNow;
+		frameCounter = 0;
+	}
+
+	std::wstring fpsText = L"FPS: " + std::to_wstring(frameRate);
+	pRenderTarget->DrawTextW(
+		fpsText.c_str(),
+		fpsText.length(),
+		pFpsTextFormat,
+		D2D1::RectF(toPixels(m_rect.right - toPixels(80.0f)), toPixels(4.0f) , m_rect.right - toPixels(4.0f), toPixels(4.0f)),
+		bBlack
+	);
+
 
 	//End Draw
 	pRenderTarget->EndDraw();
@@ -416,9 +448,9 @@ void GameWindow::discardGraphicResources()
 
 void GameWindow::extractGamestate(char* packet)
 {
-	//if (*(int32_t*)packet < latestPacketNumber) {
-	//	return;		
-	//}
+	if (*(int32_t*)packet < latestPacketNumber) {
+		return;		
+	}
 	latestPacketNumber = *(int32_t*)packet;
 
 	packet += 4;

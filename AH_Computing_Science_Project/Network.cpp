@@ -312,7 +312,7 @@ bool Network::recievePacket(char* buffer)
 	FD_ZERO(&recieveSocket);
 	timeval waitTime;
 	waitTime.tv_sec = 0;
-	waitTime.tv_usec = 1;
+	waitTime.tv_usec = 0;
 
 	FD_SET(m_udpSocket, &recieveSocket);
 
@@ -327,14 +327,14 @@ bool Network::recievePacket(char* buffer)
 		return false;
 	}
 
-	//if (FD_ISSET(m_udpSocket, &recieveSocket)){
+	if (FD_ISSET(m_udpSocket, &recieveSocket)){
 		if (!recvfrom(m_udpSocket, buffer, maxSize, 0, NULL, NULL)) {
 			return false;
 		}
 		return true;
-	//}
+	}
 
-	//return false;
+	return false;
 }
 
 bool Network::sendInput(Input* i)

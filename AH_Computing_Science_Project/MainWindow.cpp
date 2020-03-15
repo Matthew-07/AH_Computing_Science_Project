@@ -21,7 +21,7 @@ MainWindow::MainWindow(Graphics * graphics, Network * nw) : pRenderTarget(NULL)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		48.0f,
+		toPixels(48.0f),
 		L"en-uk",
 		&pTitleTextFormat
 	);
@@ -33,11 +33,22 @@ MainWindow::MainWindow(Graphics * graphics, Network * nw) : pRenderTarget(NULL)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		24.0f,
+		toPixels(24.0f),
 		L"en-uk",
 		&pMenuTextFormat
 	);
 	pMenuTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		toPixels(20.0f),
+		L"en-uk",
+		&pProfileTextFormat
+	);
 }
 
 LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -91,7 +102,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_GETMINMAXINFO:
 	{
 		LPMINMAXINFO lpMMI = (LPMINMAXINFO)lParam;
-		lpMMI->ptMinTrackSize.x = toPixels(624);
+		lpMMI->ptMinTrackSize.x = toPixels(800);
 		lpMMI->ptMinTrackSize.y = toPixels(736);
 		break;
 	}
@@ -103,7 +114,8 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		if (wParam == SW_SHOW) {
 			windowShown = true;
 			if (lParam > 0) {
-				m_userId = *(int32_t*)lParam;
+				m_userId = (*(AccountInfo*)lParam).userId;
+				m_username = (*(AccountInfo*)lParam).username;
 
 				network->recieveProfileData(&m_numberOfGames, &m_numberOfWins);
 
@@ -204,38 +216,74 @@ void MainWindow::onPaint() {
 
 	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(0.97f,0.97f,0.98f)));
 
-	// Draw Window
-	pRenderTarget->DrawTextW(
-		L"Reflex",
-		(UINT32)6,
-		pTitleTextFormat,
-		D2D1::RectF(32.0f, 32.0f, m_rect.right - 32.0f, 32.0f),
-		bBlack
-	);
-	
-	if (findingGame) {
+	if (windowShown || findingGame) {
+		// Draw Window
 		pRenderTarget->DrawTextW(
-			L"searching for game...",
-			_countof(L"searching for game..."),
-			pMenuTextFormat,
-			D2D1::RectF(toPixels(32.0f), m_rect.bottom / 2 - toPixels(16.0f), m_rect.right - toPixels(32.0f), m_rect.bottom / 2 - toPixels(16.0f)),
+			L"Reflex",
+			(UINT32)6,
+			pTitleTextFormat,
+			D2D1::RectF(32.0f, 32.0f, m_rect.right - 32.0f, 32.0f),
 			bBlack
 		);
 
-		auto currentTime = std::chrono::steady_clock::now();
-		int elapsedSeconds = std::chrono::duration_cast<std::chrono::seconds>(currentTime - findGameTimer).count();
-		int elapsedMinutes = elapsedSeconds / 60; // Integer division so will round down
-		elapsedSeconds -= elapsedMinutes * 60; // Not equivelent to elapsedSeconds = 0 since elapsed minutes is rounded down.
-		wchar_t buff[16];
-		int length = swprintf_s(buff, L"%02d:%02d", elapsedMinutes, elapsedSeconds);
 
-		pRenderTarget->DrawTextW(
-			buff,
-			length,
-			pMenuTextFormat,
-			D2D1::RectF(toPixels(32.0f), m_rect.bottom / 2 + toPixels(16.0f), m_rect.right - toPixels(32.0f), m_rect.bottom / 2 + toPixels(16.0f)),
-			bBlack
-		);
+		if (findingGame) {
+			pRenderTarget->DrawTextW(
+				L"searching for game...",
+				_countof(L"searching for game..."),
+				pMenuTextFormat,
+				D2D1::RectF(toPixels(32.0f), m_rect.bottom / 2 - toPixels(16.0f), m_rect.right - toPixels(32.0f), m_rect.bottom / 2 - toPixels(16.0f)),
+				bBlack
+			);
+
+			auto currentTime = std::chrono::steady_clock::now();
+			int elapsedSeconds = std::chrono::duration_cast<std::chrono::seconds>(currentTime - findGameTimer).count();
+			int elapsedMinutes = elapsedSeconds / 60; // Integer division so will round down
+			elapsedSeconds -= elapsedMinutes * 60; // Not equivelent to elapsedSeconds = 0 since elapsed minutes is rounded down.
+			wchar_t buff[16];
+			int length = swprintf_s(buff, L"%02d:%02d", elapsedMinutes, elapsedSeconds);
+
+			pRenderTarget->DrawTextW(
+				buff,
+				length,
+				pMenuTextFormat,
+				D2D1::RectF(toPixels(32.0f), m_rect.bottom / 2 + toPixels(16.0f), m_rect.right - toPixels(32.0f), m_rect.bottom / 2 + toPixels(16.0f)),
+				bBlack
+			);
+		}
+		else {
+			pRenderTarget->FillRectangle(D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(32.0f)), m_rect.bottom - toPixels(148.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(32.0f)), bWhite);
+			pRenderTarget->DrawRectangle(D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(32.0f)), m_rect.bottom - toPixels(148.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(32.0f)), bBlack);
+
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			std::wstring usernameText = L"Username: " + converter.from_bytes(m_username);
+			std::wstring gamePlayedText = L"Games Played: " + std::to_wstring(m_numberOfGames);
+			std::wstring gameWonText = L"Games Won: " + std::to_wstring(m_numberOfWins);
+
+			pRenderTarget->DrawTextW(
+				usernameText.c_str(),
+				usernameText.length(),
+				pProfileTextFormat,
+				D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(40.0f)), m_rect.bottom - toPixels(146.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(126.0f)),
+				bBlack
+			);
+
+			pRenderTarget->DrawTextW(
+				gamePlayedText.c_str(),
+				gamePlayedText.length(),
+				pProfileTextFormat,
+				D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(40.0f)), m_rect.bottom - toPixels(106.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(32.0f)),
+				bBlack
+			);
+
+			pRenderTarget->DrawTextW(
+				gameWonText.c_str(),
+				gameWonText.length(),
+				pProfileTextFormat,
+				D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(40.0f)), m_rect.bottom - toPixels(66.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(32.0f)),
+				bBlack
+			);
+		}
 	}
 
 
@@ -258,11 +306,7 @@ void MainWindow::createGraphicResources()
 			&pRenderTarget);
 
 		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &bBlack);
-		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &pBombBrush);
-		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(1.0f, 0.0f, 0.0f, 0.2f), &pExplosionBrush);
-		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Green), &pFoodBrush);
-		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &pBorderBrush);
-		//pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.5f, 1.0f, 0.5f, 0.15f), &pSightRangeBrush);
+		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &bWhite);
 	}
 }
 
@@ -270,4 +314,5 @@ void MainWindow::discardGraphicResources()
 {
 	SafeRelease(&pRenderTarget);
 	SafeRelease(&bBlack);
+	SafeRelease(&bWhite);
 }

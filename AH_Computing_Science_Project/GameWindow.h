@@ -38,10 +38,13 @@ private:
 	ID2D1SolidColorBrush* bBlack, * bWhite, * bPlayer, * bProjectileEnemy, * bProjectileAlly;
 	ID2D1SolidColorBrush* bStone, * bShield;
 	std::vector<ID2D1SolidColorBrush*> teamBrushes;
-	IDWriteTextFormat* pScoreTextFormat, * pCooldownTextFormat;
+	IDWriteTextFormat* pScoreTextFormat, * pCooldownTextFormat, *pFpsTextFormat;
 
 	int32_t latestPacketNumber;
 	std::chrono::steady_clock::time_point packetTimer;
+	std::chrono::steady_clock::time_point frameRateTimer;
+	int32_t frameCounter = 0;
+	int32_t frameRate = 0;
 
 	float m_camX, m_camY;
 
