@@ -24,9 +24,9 @@ Logic::Logic(int32_t numberOfPlayers, int32_t numberOfTeams, int32_t* playerIds,
 
 	tickNumber = 0;
 
-	m_daggers = std::list<Dagger>();
+	m_daggers = new std::list<Dagger>();
 
-	m_shockwaves = std::list<Shockwave>();
+	m_shockwaves = new std::list<Shockwave>();
 
 	startRound();
 
@@ -36,13 +36,13 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 {
 	//1. Move players and projectiles and 2. TODO Check if any players were killed
 	// Daggers
-	if (m_daggers.size() > 0) {
-		std::list<Dagger>::iterator dagger = m_daggers.begin();
-		while (dagger != m_daggers.end()) {
+	if (m_daggers->size() > 0) {
+		std::list<Dagger>::iterator dagger = m_daggers->begin();
+		while (dagger != m_daggers->end()) {
 
 			dagger->lifetime++;
 			if (dagger->lifetime > DAGGER_MAX_LIFETIME) {
-				m_daggers.erase(dagger++);
+				dagger = m_daggers->erase(dagger);
 				continue;
 			}
 
@@ -54,10 +54,10 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 						dagger->oldPos[1] = dagger->data.pos[1];
 
 						calculateMovement(dagger->data.pos, m_players[p].data.pos, DAGGER_SPEED_PER_TICK);
-						//dagger++;
 					}
 					else {
-						m_daggers.erase(dagger);
+						dagger = m_daggers->erase(dagger);
+						continue;
 					}
 					break;
 				}
@@ -66,9 +66,9 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 		}
 	}
 
-	if (m_shockwaves.size() > 0) {
-		std::list<Shockwave>::iterator shockwave = m_shockwaves.begin();
-		while (shockwave != m_shockwaves.end()) {
+	if (m_shockwaves->size() > 0) {
+		std::list<Shockwave>::iterator shockwave = m_shockwaves->begin();
+		while (shockwave != m_shockwaves->end()) {
 
 			shockwave->oldPos[0] = shockwave->data.pos[0];
 			shockwave->oldPos[1] = shockwave->data.pos[1];
@@ -76,7 +76,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 			calculateMovement(shockwave->data.pos, shockwave->data.dest, SHOCKWAVE_SPEED_PER_TICK);
 
 			if (shockwave->data.pos[0] == shockwave->data.dest[0]) {
-				m_shockwaves.erase(shockwave++);
+				shockwave = m_shockwaves->erase(shockwave);
 			}
 			else {
 				shockwave++;
@@ -95,9 +95,9 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				calculateMovement(m_players[p].data.pos, m_players[p].data.targetPos, PLAYER_SPEED_PER_TICK);
 
 				// Check if the player has been killed, the collision detection for the shockwave is not necessary if the player is invulnerable.
-				if (m_players[p].data.shieldDuration == 0 && m_shockwaves.size() > 0) {
+				if (m_players[p].data.shieldDuration == 0 && m_shockwaves->size() > 0) {
 
-					for (auto shockwave : m_shockwaves) {
+					for (auto shockwave : *m_shockwaves) {
 						if (calculateCollision(
 							m_players[p].oldPos,
 							m_players[p].data.pos,
@@ -114,9 +114,9 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				}
 			}
 
-			if (m_daggers.size() > 0) {
-				std::list<Dagger>::iterator dagger = m_daggers.begin();
-				while (dagger != m_daggers.end()) {					
+			if (m_daggers->size() > 0) {
+				std::list<Dagger>::iterator dagger = m_daggers->begin();
+				while (dagger != m_daggers->end()) {					
 					if (calculateCollision(
 						m_players[p].oldPos,
 						m_players[p].data.pos,
@@ -127,7 +127,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 					{
 						if (m_players[p].data.id == dagger->data.targetId) {
 							if (m_players[p].data.stoneDuration > 0) {
-								m_daggers.erase(dagger);
+								dagger = m_daggers->erase(dagger);
 							}
 							else if (m_players[p].data.shieldDuration == 0) {
 								m_players[p].isAlive = false;
@@ -242,11 +242,11 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				m_players[playerIndex].data.targetPos[1] = playerInputs.front().data.f[1];
 
 				// Daggers lose their target when their target blinks
-				if (m_daggers.size() > 0) {
-					std::list<Dagger>::iterator dagger = m_daggers.begin();
-					while (dagger != m_daggers.end()) {
+				if (m_daggers->size() > 0) {
+					std::list<Dagger>::iterator dagger = m_daggers->begin();
+					while (dagger != m_daggers->end()) {
 						if (dagger->data.targetId == m_players[playerIndex].data.id) {
-							m_daggers.erase(dagger++);
+							dagger = m_daggers->erase(dagger);
 						}
 						else {
 							dagger++;
@@ -274,7 +274,6 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				m_players[playerIndex].data.cooldowns[SHOCK_INDEX] = SHOCKWAVE_COOLDOWN;
 
 				Shockwave s;
-				//ZeroMemory(&s, sizeof(s));
 
 				s.data.pos[0] = m_players[playerIndex].data.pos[0];
 				s.data.pos[1] = m_players[playerIndex].data.pos[1];
@@ -297,7 +296,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 
 				s.data.team = m_players[playerIndex].data.team;
 
-				m_shockwaves.emplace_back(s);
+				m_shockwaves->emplace_back(s);
 			}
 			break;
 		}
@@ -310,7 +309,6 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 				m_players[playerIndex].data.cooldowns[DAGGER_INDEX] = DAGGER_COOLDOWN;
 
 				Dagger d = Dagger();
-				//ZeroMemory(&d, sizeof(d));
 
 				d.data.pos[0] = m_players[playerIndex].data.pos[0];
 				d.data.pos[1] = m_players[playerIndex].data.pos[1];
@@ -325,7 +323,7 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 
 				d.data.team = m_players[playerIndex].data.team;
 
-				m_daggers.emplace_back(d);
+				m_daggers->emplace_back(d);
 			}
 			break;
 		}
@@ -390,23 +388,23 @@ int32_t Logic::getGamestate(char* buffer)
 		}
 	}	
 
-	int32_t numberOfShockwaves = (int32_t) m_shockwaves.size();
+	int32_t numberOfShockwaves = (int32_t) m_shockwaves->size();
 	*(int32_t*)(buffer) = numberOfShockwaves;
 	bytesWritten += 4; buffer += 4;
 
-	if (m_shockwaves.size() > 0) {
-		for (auto shockwave : m_shockwaves) {
+	if (m_shockwaves->size() > 0) {
+		for (auto shockwave : *m_shockwaves) {
 			*(ShockwaveData*)(buffer) = shockwave.data;
 			bytesWritten += sizeof(ShockwaveData); buffer += sizeof(ShockwaveData);
 		}
 	}
 
-	int32_t numberOfDaggers = (int32_t) m_daggers.size();
+	int32_t numberOfDaggers = (int32_t) m_daggers->size();
 	*(int32_t*)(buffer) = numberOfDaggers;
 	bytesWritten += 4; buffer += 4;
 
-	if (m_daggers.size() > 0) {
-		for (auto dagger : m_daggers) {
+	if (m_daggers->size() > 0) {
+		for (auto dagger : *m_daggers) {
 			*(DaggerData*)(buffer) = dagger.data;
 			bytesWritten += sizeof(DaggerData); buffer += sizeof(DaggerData);
 		}
@@ -448,15 +446,17 @@ void Logic::endGame(GameResult &result)
 	}	
 
 	delete[] m_players, m_playerTeams;
+
+	delete m_daggers, m_shockwaves;
 }
 
 void Logic::startRound()
 {
-	if (m_shockwaves.size() > 0) {
-		m_shockwaves.clear();
+	if (m_shockwaves->size() > 0) {
+		m_shockwaves->clear();
 	}
-	if (m_daggers.size() > 0) {
-		m_daggers.clear();
+	if (m_daggers->size() > 0) {
+		m_daggers->clear();
 	}
 
 	// Assume players in are ordered in the way they should be placed at the beginning of each round.

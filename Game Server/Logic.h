@@ -145,8 +145,8 @@ private:
 
 	int32_t tickNumber;
 
-	std::list<Shockwave> m_shockwaves;
-	std::list<Dagger> m_daggers;
+	std::list<Shockwave> * m_shockwaves;
+	std::list<Dagger> * m_daggers;
 };
 
 inline void calculateMovement(float* pos, float* targetPos, float speed)

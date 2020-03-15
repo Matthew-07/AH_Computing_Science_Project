@@ -5,13 +5,14 @@
 
 #include "../Game Coordinator/WinsockHelper.h"
 
-#include <stdio.h>
+//#include <stdio.h>
+
+#include <thread>
 
 #include <iostream>
 #include <string>
-#include <vector>
 #include <list>
-#include <thread>
+#include <vector>
 #include <fstream>
 
 const double PI = 3.14159265358979323846;

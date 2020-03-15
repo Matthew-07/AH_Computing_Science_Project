@@ -185,7 +185,7 @@ bool Server::start()
 
 				Game newGame;
 				newGame.logic = &logic;
-				newGame.players;
+				newGame.players = new std::list<ConnectedPlayer>();
 
 				int32_t index = 0;
 
@@ -326,7 +326,7 @@ bool Server::recievePackets()
 
 bool Server::gameThread(Game* game)
 {
-	std::list<Input> playerInputs;
+	std::list<Input> playerInputs = {};
 
 	SOCKET udpSocket;
 	struct sockaddr_in6 server;
@@ -359,7 +359,7 @@ bool Server::gameThread(Game* game)
 	int buffSize = game->logic->getMaxGamestateSize();
 	char* buffer = new char[buffSize];
 
-	while (game->players.size() < game->logic->getNumberOfPlayers()) {
+	while (game->players->size() < game->logic->getNumberOfPlayers()) {
 		Sleep(10);
 	}
 
@@ -391,7 +391,7 @@ bool Server::gameThread(Game* game)
 				}
 			}
 		}*/
-		for (auto p : game->players){
+		for (auto p : *game->players){
 			FD_SET(p.socket, &inputSockets);
 		}
 
@@ -402,7 +402,7 @@ bool Server::gameThread(Game* game)
 			continue;
 		}
 
-		for (auto p : game->players) {			
+		for (auto p : *game->players) {
 			if (FD_ISSET(p.socket, &inputSockets)) {
 				Input input;
 				if (!recieveData(p.socket, (char*)&input, sizeof(input))) {
@@ -427,7 +427,8 @@ bool Server::gameThread(Game* game)
 				std::list<Game*>::iterator iter = m_games.begin();
 				while (iter != m_games.end()) {
 					if ((*iter)->logic->index = game->logic->index) {
-						m_games.erase(iter++);
+						delete (*iter)->players;
+						iter = m_games.erase(iter);
 						break;
 					}
 					iter++;
@@ -450,7 +451,7 @@ bool Server::gameThread(Game* game)
 					return false;
 				}
 
-				for (auto p : game->players) {
+				for (auto p : *game->players) {
 					if (sendto(udpSocket, buffer, gameStateSize, 0, (sockaddr*)&p.address, sizeof(p.address)) == SOCKET_ERROR) {
 						int err = WSAGetLastError();
 						std::cout << "Failed to send packet with error: " << err << std::endl;
@@ -565,7 +566,7 @@ bool Server::userThread(LPVOID clientSocket)
 
 				p.address = addr;
 
-				game->players.push_back(p);
+				game->players->push_back(p);
 
 				locatingGame = false;
 				break;
