@@ -574,19 +574,19 @@ bool Server::userThread(LPVOID clientSocket)
 		}		
 	}
 
-	while (true) {
-		bool gameRunning = false;
-		for (auto game : m_games) {
-			if (game->logic->checkForUser(userId)) {
-				gameRunning = true;
-				break;
-			}
-		}
-		if (!gameRunning) {
-			break;
-		}
-		Sleep(250);
-	}
+	//while (true) {
+	//	bool gameRunning = false;
+	//	for (auto game : m_games) {
+	//		if (game->logic->checkForUser(userId)) {
+	//			gameRunning = true;
+	//			break;
+	//		}
+	//	}
+	//	if (!gameRunning) {
+	//		break;
+	//	}
+	//	Sleep(250);
+	//}
 
 	return true;
 }

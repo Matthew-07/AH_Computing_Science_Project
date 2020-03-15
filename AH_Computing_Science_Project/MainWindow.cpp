@@ -52,7 +52,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		// Main Menu Controls
 		m_findGameButton = CreateWindowEx(NULL, L"BUTTON", L"Find Game", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(256), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
-		m_settingsButton = CreateWindowEx(NULL, L"BUTTON", L"Settings", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(320), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
+		m_logOutButton = CreateWindowEx(NULL, L"BUTTON", L"Change Account", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(320), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
 		m_exitButton = CreateWindowEx(NULL, L"BUTTON", L"Quit to Desktop", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(384), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
 
 		// Finding Game Controls
@@ -97,7 +97,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	case CA_SHOWMAIN:
 		ShowWindow(m_findGameButton, wParam);
-		ShowWindow(m_settingsButton, wParam);
+		ShowWindow(m_logOutButton, wParam);
 		ShowWindow(m_exitButton, wParam);
 
 		if (wParam == SW_SHOW) {
@@ -173,8 +173,17 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 								Sleep(1);
 							}
 						}
+					}					
+				}	
+				else if ((HWND)lParam == m_logOutButton) {
+					if (network->logOut()) {
+						// Hide the main window
+						SendMessage(m_hwnd, CA_SHOWMAIN, SW_HIDE, NULL);
+
+						// Show the login window
+						ShowWindow(m_logInHandle, SW_SHOW);
 					}
-				}				
+				}
 			}
 			break;
 		}

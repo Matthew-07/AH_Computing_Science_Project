@@ -182,31 +182,31 @@ const int32_t	MAX_SCORE = 5;
 const float		PLAYER_SPEED = 60;
 const float		PLAYER_SPEED_PER_TICK = PLAYER_SPEED / TICKS_PER_SECOND;
 
-const float		SHOCKWAVE_SPEED = 450;
+const float		SHOCKWAVE_SPEED = 600;
 const float		SHOCKWAVE_SPEED_PER_TICK = SHOCKWAVE_SPEED / TICKS_PER_SECOND;
 const int32_t	SHOCKWAVE_RANGE = 500;
-const int32_t	SHOCKWAVE_COLLISION_SIZE = 35;
+const int32_t	SHOCKWAVE_COLLISION_SIZE = 33;
 const int32_t	SHOCKWAVE_COOLDOWN = 160;
 // A shockwave takes range/speed time to finish and can at most be produced once every cooldown ticks.
 const int32_t	MAX_SHOCKWAVES = (int32_t) ceil((double) SHOCKWAVE_RANGE / (double)SHOCKWAVE_SPEED / (double) SHOCKWAVE_COOLDOWN);
 
-const float		DAGGER_SPEED = 300;
+const float		DAGGER_SPEED = 450;
 const float		DAGGER_SPEED_PER_TICK = DAGGER_SPEED / TICKS_PER_SECOND;
-const int32_t	DAGGER_MAX_LIFETIME = TICKS_PER_SECOND * 20; // Maximum time a dagger can exist for
+const int32_t	DAGGER_MAX_LIFETIME = 20 * TICKS_PER_SECOND; // Maximum time a dagger can exist for
 const int32_t	DAGGER_COLLISION_SIZE = 36;
-const int32_t	DAGGER_COOLDOWN = 200;
+const int32_t	DAGGER_COOLDOWN = 3 * TICKS_PER_SECOND;
 const int32_t	MAX_DAGGERS = DAGGER_MAX_LIFETIME / DAGGER_COOLDOWN;
 
-const int32_t	SHIELD_DURATION = 12;
-const int32_t	SHIELD_COOLDOWN = 160;
+const int32_t	SHIELD_DURATION = round(0.2 * TICKS_PER_SECOND);
+const int32_t	SHIELD_COOLDOWN = 3 * TICKS_PER_SECOND;
 
-const int32_t	BLINK_COOLDOWN = 120;
+const int32_t	BLINK_COOLDOWN = 2 * TICKS_PER_SECOND;
 const int32_t	BLINK_RANGE = 800;
 
 const int32_t	STONE_DURATION = 300;
 const int32_t	STONE_COOLDOWN = 600;
 
-const int32_t	POST_BLINK_COOLDOWN = 32;
+const int32_t	POST_BLINK_COOLDOWN = round(0.15 * TICKS_PER_SECOND);
 
 const int32_t	MAP_SIZE_PER_PLAYER = 100;
 const int32_t	MAP_SIZE_CONSTANT = 300;

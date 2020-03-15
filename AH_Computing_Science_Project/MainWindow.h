@@ -38,7 +38,7 @@ private:
 	Network* network = NULL;
 	bool windowShown = false;
 
-	HWND m_findGameButton, m_settingsButton, m_exitButton;
+	HWND m_findGameButton, m_logOutButton, m_exitButton;
 	HWND m_cancelButton;
 
 	bool findingGame = false;

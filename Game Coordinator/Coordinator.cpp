@@ -178,9 +178,12 @@ bool Coordinator::userThread(LPVOID lParam)
 	*/
 
 	SOCKET userSocket = (SOCKET)lParam;	
+	int32_t userId;
+	
+	// Used by goto. A goto just seemed a cleaner way of going back here if the user changes account.
+	USER_THREAD_START:
 
-	int32_t userId = -1;
-
+	userId = -1;
 	while (true) {
 		char recvBuff[66];
 
@@ -205,7 +208,7 @@ bool Coordinator::userThread(LPVOID lParam)
 			userId = m_db->addUser(username, password);
 		}
 		// Else log in to existing account
-		else {			
+		else {
 			userId = m_db->logIn(username, password);
 
 			for (auto id : m_connectedPlayerIDs) {
@@ -223,11 +226,11 @@ bool Coordinator::userThread(LPVOID lParam)
 
 		if (userId > 0) {
 			m_connectedPlayerIDs.push_back(userId);
-			std::cout << "Player " << userId << " has connected,";
+			std::cout << "Player " << userId << " has connected, ";
 			break;
 		}
 	}
-	
+
 	// send profile information
 	int32_t data[2] = { 0,0 };
 	m_db->getUserGameInfo(userId, &data[0], &data[1]);
@@ -242,7 +245,7 @@ bool Coordinator::userThread(LPVOID lParam)
 	FD_ZERO(&recieveSocket);
 	timeval waitTime;
 	waitTime.tv_sec = 0;
-	waitTime.tv_usec = 100;	
+	waitTime.tv_usec = 100;
 
 	std::list<COMMAND> tasks;
 
@@ -270,7 +273,7 @@ bool Coordinator::userThread(LPVOID lParam)
 			if (!recieveData(userSocket, (char*)&int32Buff, 4))
 			{
 				// Connection lost
-				printf("Player %i disconnected.\n\n",userId);
+				printf("Player %i disconnected.\n\n", userId);
 				mtx.lock();
 				std::list<Player*>::iterator it;
 				for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
@@ -363,29 +366,31 @@ bool Coordinator::userThread(LPVOID lParam)
 			case LEAVE_QUEUE:
 			{				std::cout << "Player " << userId << " requested to leave the matchmaking queue." << std::endl << std::endl;
 
-				bool playerFound = false;
-				mtx.lock();
-				std::list<Player*>::iterator it;
-				for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
-					if ((*it)->id = userId) {
-						m_matchmakingQueue.erase(it);
-						playerFound = true;
-						break;
-					}
+			bool playerFound = false;
+			mtx.lock();
+			std::list<Player*>::iterator it;
+			for (it = m_matchmakingQueue.begin(); it != m_matchmakingQueue.end(); it++) {
+				if ((*it)->id = userId) {
+					m_matchmakingQueue.erase(it);
+					playerFound = true;
+					break;
 				}
-				mtx.unlock();
-				if (playerFound) {
-					// Player Successfully left the queue
-					int32_t buff = LEFT_QUEUE;
-					sendData(userSocket, (char*)&buff, 4);
+			}
+			mtx.unlock();
+			if (playerFound) {
+				// Player Successfully left the queue
+				int32_t buff = LEFT_QUEUE;
+				sendData(userSocket, (char*)&buff, 4);
 
-					printf("Player %i left the queue.\n\n", userId);
-				}
-				break;
+				printf("Player %i left the queue.\n\n", userId);
+			}
+			break;
 			}
 			case SWITCH_ACCOUNT:
 			{
-				break;
+				printf("Player %i has logged out.\n\n", userId);
+				m_connectedPlayerIDs.remove(userId);
+				goto USER_THREAD_START;
 			}
 			}
 		}

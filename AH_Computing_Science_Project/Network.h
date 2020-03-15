@@ -23,6 +23,8 @@ public:
 
 	bool sendInput(Input* i);
 
+	bool logOut();
+
 private:
 	SOCKET m_GCSocket, m_udpSocket;	
 	int32_t udpPort;

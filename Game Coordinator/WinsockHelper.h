@@ -19,7 +19,6 @@
 
 
 
-
 bool inline sendData(SOCKET& s, char* buff, int dataLength)
 {
 	while (dataLength > 0) {

@@ -347,6 +347,16 @@ bool Network::sendInput(Input* i)
 	return true;
 }
 
+bool Network::logOut()
+{
+	int32_t buffer = SWITCH_ACCOUNT;
+	if (!sendData(m_GCSocket, (char*)&buffer, sizeof(buffer))) {
+		MessageBoxA(NULL, "Failed to log out.", "Error", NULL);
+		return false;
+	}
+	return true;
+}
+
 bool Network::joinGame(in6_addr* serverAddress)
 {
 
