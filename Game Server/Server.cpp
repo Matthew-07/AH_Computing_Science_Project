@@ -419,6 +419,8 @@ bool Server::gameThread(Game* game)
 			int32_t result = game->logic->tick(playerInputs);
 			if (result >= 0) {
 				// The game finished, team (result) won.
+				sendGamestate(udpSocket, game, buffer, buffSize);
+
 				GameResult result;
 				auto endTime = std::chrono::steady_clock::now();
 				result.duration = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
@@ -442,30 +444,43 @@ bool Server::gameThread(Game* game)
 			}
 			else if (result == -2) {
 				// The round ended but the game did not, wait a short while before the next round starts.
-				Sleep(500);
-			}
-			else {
-				ZeroMemory(buffer, buffSize);
-				int gameStateSize = game->logic->getGamestate(buffer);
-
-				if (gameStateSize > buffSize) {
-					std::cout << "Gamestate larger than buffer!" << std::endl;
-					return false;
-				}
-
-				for (auto p : *game->players) {
-					if (sendto(udpSocket, buffer, gameStateSize, 0, (sockaddr*)&p.address, sizeof(p.address)) == SOCKET_ERROR) {
-						int err = WSAGetLastError();
-						std::cout << "Failed to send packet with error: " << err << std::endl;
-						std::cout << "Buffer size: " << gameStateSize << "." << std::endl;
+				auto timer = std::chrono::steady_clock::now();
+				while (true) {
+					if (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - lastTick)
+						>= timePerTick) {
+						sendGamestate(udpSocket, game, buffer, buffSize);
+						lastTick = std::chrono::steady_clock::now();
 					}
+					if (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - timer).count()
+						>= 500000) break;
 				}
-
+			}
+			else {				
+				sendGamestate(udpSocket, game, buffer, buffSize);
 				lastTick = std::chrono::steady_clock::now();
 			}
 		}
 	}
 	return false;
+}
+
+void Server::sendGamestate(SOCKET udpSocket, Game* game, char* buff, int32_t buffSize)
+{
+	ZeroMemory(buff, buffSize);
+	int gameStateSize = game->logic->getGamestate(buff);
+
+	if (gameStateSize > buffSize) {
+		std::cout << "Gamestate larger than buffer!" << std::endl;
+		return;
+	}
+
+	for (auto p : *game->players) {
+		if (sendto(udpSocket, buff, gameStateSize, 0, (sockaddr*)&p.address, sizeof(p.address)) == SOCKET_ERROR) {
+			int err = WSAGetLastError();
+			std::cout << "Failed to send packet with error: " << err << std::endl;
+			std::cout << "Buffer size: " << gameStateSize << "." << std::endl;
+		}
+	}
 }
 
 bool Server::userConnectionsThread()

@@ -30,6 +30,7 @@ public:
 	bool recievePackets();
 
 	bool gameThread(Game* game);
+	void sendGamestate(SOCKET udpSocket, Game* game, char* buff, int32_t buffSize);
 
 	bool userConnectionsThread();
 	bool userThread(LPVOID clientSocket);
