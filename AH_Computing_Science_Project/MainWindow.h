@@ -33,6 +33,7 @@ private:
 	IDWriteTextFormat *pTitleTextFormat, *pMenuTextFormat, * pProfileTextFormat;
 
 	RECT m_rect;
+	D2D1_RECT_F m_dipRect;
 
 	Graphics *myGraphics = NULL;
 	Network* network = NULL;

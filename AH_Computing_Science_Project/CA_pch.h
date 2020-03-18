@@ -39,6 +39,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 #pragma comment(lib, "Ws2_32.lib")
 

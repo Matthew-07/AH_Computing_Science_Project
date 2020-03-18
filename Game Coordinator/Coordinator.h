@@ -2,8 +2,8 @@
 
 #include "GC_pch.h"
 
-#define USER_LEAVE		00001
-#define USER_NEWGAME	00002
+#define USER_NEWGAME	00001
+#define USER_STATS		00002
 
 #define SERVER_NEWGAME	10001
 
@@ -37,6 +37,11 @@ public:
 		serverIP = id;
 		ping = p;
 	}	
+};
+
+struct PlayerThread {
+	int id = -1;
+	std::list<COMMAND>* threadTasks;
 };
 
 // Store information about each player in queue to find a game
@@ -89,14 +94,15 @@ private:
 	std::thread*				m_userConnectionsThread;
 	std::thread*				m_serverConnectionsThread;
 	std::thread*				m_matchmakingThread;
-	std::vector<std::thread>	m_userThreads;
-	std::vector<std::thread>	m_serverThreads;
+	//std::vector<std::thread>	m_userThreads;
+	//std::vector<std::thread>	m_serverThreads;
 
 	std::list<Player*>			m_matchmakingQueue;
 
 	std::list<Server*>			m_servers;
 
-	std::list<int32_t>			m_connectedPlayerIDs;
+//	std::list<int32_t>			m_connectedPlayerIDs;
+	std::list<PlayerThread>		m_connectedPlayers;
 
 	Database *m_db = NULL;	
 };

@@ -210,11 +210,12 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 		switch (playerInputs.front().type) {			
 		case INP_MOVE:
 		{
-			if (checkBounds(playerInputs.front().data.f)) {
-				m_players[playerIndex].data.stoneDuration = 0; // Any action cancels stone form
-				m_players[playerIndex].data.targetPos[0] = playerInputs.front().data.f[0];
-				m_players[playerIndex].data.targetPos[1] = playerInputs.front().data.f[1];					
-			}
+			m_players[playerIndex].data.stoneDuration = 0; // Any action cancels stone form
+			m_players[playerIndex].data.targetPos[0] = playerInputs.front().data.f[0];
+			m_players[playerIndex].data.targetPos[1] = playerInputs.front().data.f[1];	
+
+			restrictBounds(m_players[playerIndex].data.pos, m_players[playerIndex].data.targetPos);
+
 			break;
 		}
 		case INP_SHIELD:
@@ -229,8 +230,10 @@ int32_t Logic::tick(std::list<Input> &playerInputs)
 		}
 		case INP_BLINK:
 		{
-			if (m_players[playerIndex].data.cooldowns[BLINK_INDEX] == 0 && checkBounds(playerInputs.front().data.f) 
-				&& calculateDistance(m_players[playerIndex].data.pos, playerInputs.front().data.f) < BLINK_RANGE) {
+			if (m_players[playerIndex].data.cooldowns[BLINK_INDEX] == 0
+				&& calculateDistance(m_players[playerIndex].data.pos, playerInputs.front().data.f) < BLINK_RANGE) {	
+
+				restrictBounds(m_players[playerIndex].data.pos, playerInputs.front().data.f);
 
 				m_players[playerIndex].data.stoneDuration = 0; // Any action cancels stone form
 				m_players[playerIndex].data.cooldowns[BLINK_INDEX] = BLINK_COOLDOWN;
@@ -360,7 +363,8 @@ int32_t Logic::getMaxGamestateSize() // The gamestate will not be larger than th
 		((UINT64)m_numberOfPlayers * sizeof(PlayerData)
 		+ (UINT64)m_numberOfPlayers * MAX_DAGGERS *  ((int32_t) sizeof(DaggerData))
 		+ (UINT64)m_numberOfPlayers * MAX_SHOCKWAVES * ((int32_t)sizeof(ShockwaveData))
-		+ 16);
+		+ 16
+		+ m_numberOfTeams * sizeof(int32_t));
 }
 
 int32_t Logic::getGamestate(char* buffer)
@@ -408,6 +412,11 @@ int32_t Logic::getGamestate(char* buffer)
 			*(DaggerData*)(buffer) = dagger.data;
 			bytesWritten += sizeof(DaggerData); buffer += sizeof(DaggerData);
 		}
+	}
+
+	for (int t = 0; t < m_numberOfTeams; t++) {
+		*(int32_t*)(buffer) = m_teamScores[t];
+		bytesWritten += 4; buffer += 4;
 	}
 
 	return bytesWritten;

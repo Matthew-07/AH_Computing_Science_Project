@@ -82,12 +82,25 @@ protected:
 		return x * DPIScale;
 	} // Converts device independent pixels to physical pixels.
 
+	float fromPixels(float x) {
+		return x / DPIScale;
+	} // reverse of toPixels
+
 	D2D1_RECT_F rectToPix(D2D1_RECT_F rect) {
 		D2D1_RECT_F r;
 		r.left = toPixels(rect.left);
 		r.top = toPixels(rect.top);
 		r.right = toPixels(rect.right);
 		r.bottom = toPixels(rect.bottom);
+		return r;
+	}
+
+	D2D1_RECT_F rectFromPix(D2D1_RECT_F rect) {
+		D2D1_RECT_F r;
+		r.left = fromPixels(rect.left);
+		r.top = fromPixels(rect.top);
+		r.right = fromPixels(rect.right);
+		r.bottom = fromPixels(rect.bottom);
 		return r;
 	}
 

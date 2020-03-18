@@ -15,6 +15,7 @@
 #define START_GAME		20001
 
 // Server -> Coordinator
+// Also used to tell client that the game finished
 #define GAME_FINISHED 	30001
 
 

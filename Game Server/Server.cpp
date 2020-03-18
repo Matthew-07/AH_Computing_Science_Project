@@ -181,12 +181,10 @@ bool Server::start()
 				std::cout << numberOfPlayers << std::endl << numberOfTeams << std::endl;
 				for (int i = 0; i < numberOfPlayers; i++) {
 					std::cout << "Player: " << playerIds[i] << ", Team: " << playerTeams[i] << std::endl;
-				}
-
-				Logic logic = Logic(numberOfPlayers, numberOfTeams, playerIds, playerTeams);
+				}				
 
 				Game newGame;
-				newGame.logic = &logic;
+				newGame.logic = new Logic(numberOfPlayers, numberOfTeams, playerIds, playerTeams);
 				newGame.players = new std::list<ConnectedPlayer>();
 
 				int32_t index = 0;
@@ -203,7 +201,10 @@ bool Server::start()
 
 				newGame.logic->index = index;
 
-				m_gameThreads.push_back(std::thread(&Server::gameThread, this, &newGame));
+				//m_gameThreads.push_back(std::thread(&Server::gameThread, this, &newGame));
+				std::thread t = std::thread(&Server::gameThread, this, &newGame);
+				t.detach();
+
 				m_games.push_back(&newGame);
 				break;
 			}
@@ -294,10 +295,11 @@ bool Server::recievePackets()
 		if ((recv_len = recvfrom(s, buf, BUFFER_SIZE, 0, (struct sockaddr*) &si_other, &slen)) == SOCKET_ERROR)
 		{
 			printf(" recvfrom() failed with error code : % d ", WSAGetLastError());
+			WSACleanup();
 			exit(EXIT_FAILURE);
 		}
 
-		//print details of the client/peer and the data received
+		// Output port of client
 		if (counter == 50) {
 			char* buff = new char[32];
 			ZeroMemory(buff, 32);
@@ -307,14 +309,13 @@ bool Server::recievePackets()
 			counter = 0;
 		}
 
-		//now reply the client with the same data
+		// Send same data back to client
 		if (sendto(s, buf, recv_len, 0, (struct sockaddr*) &si_other, slen) == SOCKET_ERROR)
 		{
 			printf(" sendto() failed with error code : % d ", WSAGetLastError());
+			WSACleanup();
 			exit(EXIT_FAILURE);
 		}
-
-		
 
 		counter++;
 	}
@@ -322,7 +323,6 @@ bool Server::recievePackets()
 	closesocket(s);
 	WSACleanup();
 
-	return 0;
 	return false;
 }
 
@@ -340,10 +340,10 @@ bool Server::gameThread(Game* game)
 	//Create a socket
 	if ((udpSocket = socket(AF_INET6, SOCK_DGRAM, 0)) == INVALID_SOCKET)
 	{
-		printf(" Could not create socket : % d ", WSAGetLastError());
+		printf("Could not create socket : % d ", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
-	printf(" Socket created.\n ");
+	printf("UDP Socket created.\n ");
 
 	//Prepare the sockaddr_in structure
 	memset(&server, 0, sizeof(server));
@@ -354,7 +354,7 @@ bool Server::gameThread(Game* game)
 	//Bind
 	if (bind(udpSocket, (struct sockaddr*) & server, sizeof(server)) == SOCKET_ERROR)
 	{
-		printf(" Bind failed with error code : % d ", WSAGetLastError());
+		printf("Bind failed with error code : % d ", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 
@@ -367,32 +367,25 @@ bool Server::gameThread(Game* game)
 
 	Sleep(500);
 
-	fd_set inputSockets;	
+	fd_set inputSockets;
+	FD_ZERO(&inputSockets);
 	timeval waitTime;
 	waitTime.tv_sec = 0;
-	waitTime.tv_usec = 5;
+	waitTime.tv_usec = 0;
 
 	auto startTime = std::chrono::steady_clock::now();
 
 	auto lastTick = std::chrono::steady_clock::now();
 
-	auto timePerTick = std::chrono::microseconds(1000000 / TICKS_PER_SECOND);
+	auto timePerTick = std::chrono::microseconds(1000000 / TICKS_PER_SECOND);	
+
+	//bool tempBool = true;
 
 	while (true) {	
 
-		FD_ZERO(&inputSockets);
-		/*if (game->players.size() > 0) {
-			std::list<ConnectedPlayer>::iterator p = game->players.begin();
-			while (p != game->players.end()){
-				if (p->socket == INVALID_SOCKET) {
-					game->players.erase(p++);
-				}
-				else{
-					FD_SET(p->socket, &inputSockets);
-					p++;
-				}
-			}
-		}*/
+		//Temp timer
+		//auto temp = std::chrono::steady_clock::now();
+
 		for (auto p : *game->players){
 			FD_SET(p.socket, &inputSockets);
 		}
@@ -402,7 +395,7 @@ bool Server::gameThread(Game* game)
 			std::cout << "Failed to check for player input with error: " << res << "." << std::endl;			
 			getchar();
 			continue;
-		}
+		}		
 
 		for (auto p : *game->players) {
 			if (FD_ISSET(p.socket, &inputSockets)) {
@@ -416,10 +409,18 @@ bool Server::gameThread(Game* game)
 		}
 
 		if (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - lastTick) >= timePerTick) {
-			int32_t result = game->logic->tick(playerInputs);
-			if (result >= 0) {
+			int32_t intResult = game->logic->tick(playerInputs);
+			if (intResult >= 0) {
 				// The game finished, team (result) won.
-				sendGamestate(udpSocket, game, buffer, buffSize);
+
+				// Notfiy players the game ended
+				for (auto p : *game->players) {
+					int32_t intBuff = GAME_FINISHED;
+					sendData(p.socket, (char*)&intBuff, sizeof(intBuff));
+					closesocket(p.socket);
+				}
+
+				closesocket(udpSocket);
 
 				GameResult result;
 				auto endTime = std::chrono::steady_clock::now();
@@ -431,18 +432,18 @@ bool Server::gameThread(Game* game)
 				std::list<Game*>::iterator iter = m_games.begin();
 				while (iter != m_games.end()) {
 					if ((*iter)->logic->index = game->logic->index) {
-						delete (*iter)->players;
+						delete (*iter)->players, (*iter)->logic;
 						iter = m_games.erase(iter);
 						break;
 					}
 					iter++;
 				}
 
-				delete[] buffer;
+				delete[] buffer;				
 
 				return true;
 			}
-			else if (result == -2) {
+			else if (intResult == -2) {
 				// The round ended but the game did not, wait a short while before the next round starts.
 				auto timer = std::chrono::steady_clock::now();
 				while (true) {
@@ -460,6 +461,10 @@ bool Server::gameThread(Game* game)
 				lastTick = std::chrono::steady_clock::now();
 			}
 		}
+		/*if (tempBool) {
+			std::cout << "Loop took " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - temp).count() << "ms to execute." << std::endl;
+			tempBool = false;
+		}*/
 	}
 	return false;
 }
@@ -502,7 +507,9 @@ bool Server::userConnectionsThread()
 			continue;
 		}
 
-		m_userThreads.push_back(std::thread(&Server::userThread, this, (LPVOID)ClientSocket));
+		//m_userThreads.push_back(std::thread(&Server::userThread, this, (LPVOID)ClientSocket));
+		std::thread t = std::thread(&Server::userThread, this, (LPVOID)ClientSocket);
+		t.detach();
 	}
 
 	return true;
@@ -568,7 +575,6 @@ bool Server::userThread(LPVOID clientSocket)
 				}
 
 				ConnectedPlayer p;
-				//ZeroMemory(&p, sizeof(p));
 
 				p.socket = userSocket;
 				p.userId = userId;

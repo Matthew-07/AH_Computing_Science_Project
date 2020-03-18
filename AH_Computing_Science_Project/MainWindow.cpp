@@ -73,14 +73,24 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	case WM_DPICHANGED:
 	{
-		UINT dpi = GetDpiForWindow(m_hwnd);
+		UINT dpi = HIWORD(wParam);
 		DPIScale = dpi / 96.0f;
-		break;
+
+		//if (m_logInHandle != NULL) {
+		//	MoveWindow(m_logInHandle, m_rect.right / 2 - toPixels(256), toPixels(32), toPixels(512), m_rect.bottom - toPixels(64), true);
+		//}
+		//if (m_gameWindowHandle != NULL) {
+		//	MoveWindow(m_gameWindowHandle, 0, 0, m_rect.right, m_rect.bottom, true);
+		//}
+
+		//break;
 	}
 	case WM_SIZE:
 		GetClientRect(m_hwnd, &m_rect);
 		discardGraphicResources();
 		InvalidateRect(m_hwnd, NULL, TRUE);
+
+		m_dipRect = rectFromPix(D2D1::RectF(m_rect.left, m_rect.top, m_rect.right, m_rect.bottom));
 
 		if (m_logInHandle != NULL) {
 			MoveWindow(m_logInHandle, m_rect.right / 2 - toPixels(256), toPixels(32) , toPixels(512), m_rect.bottom - toPixels(64), true);
@@ -180,7 +190,17 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 								else if (res == 2) {
 									findingGame = false;
 									ShowWindow(m_gameWindowHandle, SW_SHOW);
+									ShowWindow(m_cancelButton, SW_HIDE);
+
+									// This won't return until the game has finished.
 									SendMessage(m_gameWindowHandle, CA_SHOWGAME, SW_SHOW, (LPARAM) &m_userId);
+									// ---
+
+									// By sending the userId and username again, the window will try to recieve the game information
+									AccountInfo accInfo;
+									accInfo.userId = m_userId;
+									accInfo.username = m_username;
+									SendMessage(m_hwnd, CA_SHOWMAIN, SW_SHOW, (LPARAM) &accInfo);
 								}								
 								Sleep(1);
 							}
@@ -222,7 +242,7 @@ void MainWindow::onPaint() {
 			L"Reflex",
 			(UINT32)6,
 			pTitleTextFormat,
-			D2D1::RectF(32.0f, 32.0f, m_rect.right - 32.0f, 32.0f),
+			D2D1::RectF(32.0f, 32.0f, m_dipRect.right - 32.0f, 32.0f),
 			bBlack
 		);
 
@@ -232,7 +252,7 @@ void MainWindow::onPaint() {
 				L"searching for game...",
 				_countof(L"searching for game..."),
 				pMenuTextFormat,
-				D2D1::RectF(toPixels(32.0f), m_rect.bottom / 2 - toPixels(16.0f), m_rect.right - toPixels(32.0f), m_rect.bottom / 2 - toPixels(16.0f)),
+				D2D1::RectF(32.0f, m_dipRect.bottom / 2 - 16.0f, m_dipRect.right - 32.0f, m_dipRect.bottom / 2 - 16.0f),
 				bBlack
 			);
 
@@ -247,13 +267,13 @@ void MainWindow::onPaint() {
 				buff,
 				length,
 				pMenuTextFormat,
-				D2D1::RectF(toPixels(32.0f), m_rect.bottom / 2 + toPixels(16.0f), m_rect.right - toPixels(32.0f), m_rect.bottom / 2 + toPixels(16.0f)),
+				D2D1::RectF(32.0f, m_dipRect.bottom / 2 + 16.0f, m_dipRect.right - 32.0f, m_dipRect.bottom / 2 + 16.0f),
 				bBlack
 			);
 		}
 		else {
-			pRenderTarget->FillRectangle(D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(32.0f)), m_rect.bottom - toPixels(148.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(32.0f)), bWhite);
-			pRenderTarget->DrawRectangle(D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(32.0f)), m_rect.bottom - toPixels(148.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(32.0f)), bBlack);
+			pRenderTarget->FillRectangle(D2D1::RectF(m_dipRect.right / 3 * 2 + 32.0f, m_dipRect.bottom - 148.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f), bWhite);
+			pRenderTarget->DrawRectangle(D2D1::RectF(m_dipRect.right / 3 * 2 + 32.0f, m_dipRect.bottom - 148.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f), bBlack);
 
 			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			std::wstring usernameText = L"Username: " + converter.from_bytes(m_username);
@@ -264,7 +284,7 @@ void MainWindow::onPaint() {
 				usernameText.c_str(),
 				usernameText.length(),
 				pProfileTextFormat,
-				D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(40.0f)), m_rect.bottom - toPixels(146.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(126.0f)),
+				D2D1::RectF(m_dipRect.right / 3 * 2 + 40.0f, m_dipRect.bottom - 146.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 126.0f),
 				bBlack
 			);
 
@@ -272,7 +292,7 @@ void MainWindow::onPaint() {
 				gamePlayedText.c_str(),
 				gamePlayedText.length(),
 				pProfileTextFormat,
-				D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(40.0f)), m_rect.bottom - toPixels(106.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(32.0f)),
+				D2D1::RectF(m_dipRect.right / 3 * 2 + 40.0f, m_dipRect.bottom - 106.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f),
 				bBlack
 			);
 
@@ -280,7 +300,7 @@ void MainWindow::onPaint() {
 				gameWonText.c_str(),
 				gameWonText.length(),
 				pProfileTextFormat,
-				D2D1::RectF(toPixels(m_rect.right / 3 * 2 + toPixels(40.0f)), m_rect.bottom - toPixels(66.0f), m_rect.right - toPixels(32.0f), m_rect.bottom - toPixels(32.0f)),
+				D2D1::RectF(m_dipRect.right / 3 * 2 + 40.0f, m_dipRect.bottom - 66.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f),
 				bBlack
 			);
 		}

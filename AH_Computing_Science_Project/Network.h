@@ -20,6 +20,9 @@ public:
 
 	bool getGameInfo(int32_t *numberOfPlayers, int32_t *numberOfTeams, int32_t** playerIds, int32_t** playerTeams, int32_t* maxGamestateSize);
 	bool recievePacket(char * buffer);
+	bool checkForGameEnd();
+
+	void clearUDPRecieveBuff();
 
 	bool sendInput(Input* i);
 
@@ -33,8 +36,6 @@ private:
 	void checkPings(in6_addr * addressBuffer, int64_t * avgPingBuffer, int numberOfServers);
 	void sendPings(SOCKET s, sockaddr_in6 * addr);
 	void recievePings(SOCKET s, int64_t** pingBuffer, in6_addr* addressBuffer, int numberOfServers);
-
-	bool inQueue = false;
 
 	int32_t m_userId;
 

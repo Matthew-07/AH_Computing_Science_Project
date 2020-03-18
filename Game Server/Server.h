@@ -44,13 +44,13 @@ private:
 
 	std::thread* m_recievePacketsThread;
 
-	std::list<std::thread>	m_gameThreads;
+	//std::list<std::thread>	m_gameThreads;
 	std::list<Game*>		m_games;
 
 	std::list<GameResult>	m_results;
 
 	std::thread* m_userConnectionsThread;
-	std::list<std::thread>	m_userThreads;
+	//std::list<std::thread>	m_userThreads;
 	
 
 	in_addr6 m_ip;

@@ -22,6 +22,8 @@ private:
 	void createGraphicResources();
 	void discardGraphicResources();
 
+	void createDWriteResources();
+
 	ID2D1HwndRenderTarget* pRenderTarget;
 	ID2D1SolidColorBrush *bBlack, *bRed;
 

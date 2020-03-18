@@ -37,6 +37,7 @@ private:
 	ID2D1HwndRenderTarget* pRenderTarget;
 	ID2D1SolidColorBrush* bBlack, * bWhite, * bPlayer, * bProjectileEnemy, * bProjectileAlly;
 	ID2D1SolidColorBrush* bStone, * bShield;
+	ID2D1SolidColorBrush* bOnCooldown, * bOffCooldown;
 	std::vector<ID2D1SolidColorBrush*> teamBrushes;
 	IDWriteTextFormat* pScoreTextFormat, * pCooldownTextFormat, *pFpsTextFormat;
 

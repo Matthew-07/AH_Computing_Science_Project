@@ -34,6 +34,7 @@
     <ClCompile Include="Server.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GameConstants.h" />
     <ClInclude Include="GS_pch.h" />
     <ClInclude Include="Logic.h" />
     <ClInclude Include="Server.h" />

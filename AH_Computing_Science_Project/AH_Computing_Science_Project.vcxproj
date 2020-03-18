@@ -173,7 +173,8 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Manifest>
-      <AdditionalManifestFiles>Manifest.xml %(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <AdditionalManifestFiles>%(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
     </Manifest>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

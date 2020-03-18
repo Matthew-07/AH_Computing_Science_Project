@@ -328,13 +328,81 @@ bool Network::recievePacket(char* buffer)
 	}
 
 	if (FD_ISSET(m_udpSocket, &recieveSocket)){
-		if (!recvfrom(m_udpSocket, buffer, maxSize, 0, NULL, NULL)) {
+		if (recvfrom(m_udpSocket, buffer, maxSize, 0, NULL, NULL) == SOCKET_ERROR) {
 			return false;
 		}
 		return true;
 	}
 
 	return false;
+}
+
+bool Network::checkForGameEnd()
+{
+	fd_set recieveSocket;
+	FD_ZERO(&recieveSocket);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 0;
+
+	FD_SET(m_tcpServerSocket, &recieveSocket);
+
+	if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+		int res = WSAGetLastError();
+		char buff[64];
+		_itoa_s(res, buff, 10);
+		OutputDebugStringA("Error: ");
+		OutputDebugStringA(buff);
+		OutputDebugStringA("\n");
+		MessageBoxA(NULL, "Failed to recieve packet.", "Error", NULL);
+		return false;
+	}
+
+	if (FD_ISSET(m_tcpServerSocket, &recieveSocket)) {
+		int32_t buffer;
+		if (!recieveData(m_tcpServerSocket, (char*)&buffer, sizeof(buffer))) {
+			return false;
+		}
+		if (buffer == GAME_FINISHED) {
+			closesocket(m_tcpServerSocket);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void Network::clearUDPRecieveBuff()
+{
+	fd_set recieveSocket;
+	FD_ZERO(&recieveSocket);
+	timeval waitTime;
+	waitTime.tv_sec = 0;
+	waitTime.tv_usec = 0;
+
+	char* buff = new char[maxSize];
+	ZeroMemory(buff, maxSize);
+
+	while (true) {
+		FD_SET(m_udpSocket, &recieveSocket);
+
+		if (select(0, &recieveSocket, NULL, NULL, &waitTime) == SOCKET_ERROR) {
+			delete[] buff;
+			return;
+		}
+
+		if (FD_ISSET(m_udpSocket, &recieveSocket)) {
+			
+			if (recvfrom(m_udpSocket, buff, maxSize, 0, NULL, NULL) == SOCKET_ERROR) {
+				delete[] buff;
+				return;
+			}			
+		}
+		else {
+			delete[] buff;
+			break;
+		}
+	}
 }
 
 bool Network::sendInput(Input* i)
@@ -359,10 +427,6 @@ bool Network::logOut()
 
 bool Network::joinGame(in6_addr* serverAddress)
 {
-
-	/*if (m_tcpServerSocket != INVALID_SOCKET) {
-		closesocket(m_tcpServerSocket);
-	}*/
 
 	// Setup TCP connection to server
 	m_tcpServerSocket = INVALID_SOCKET;
@@ -435,6 +499,7 @@ bool Network::joinGame(in6_addr* serverAddress)
 	}
 	
 	int len = sizeof(m_serverAddr);
+	ZeroMemory(&m_serverAddr, len);
 	getpeername(m_tcpServerSocket, (sockaddr*)&m_serverAddr, &len);
 
 	return true;

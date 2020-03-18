@@ -15,39 +15,7 @@ LogInWindow::LogInWindow(Graphics* graphics, Network* nw, HWND parentHandle) : b
 	network = nw;
 	m_rect = RECT();
 
-	myGraphics->getWriteFactory()->CreateTextFormat(
-		L"Ariel",
-		NULL,
-		DWRITE_FONT_WEIGHT_REGULAR,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(24.0f),
-		L"en-uk",
-		&pLoginTextFormat
-	);
-
-	myGraphics->getWriteFactory()->CreateTextFormat(
-		L"Ariel",
-		NULL,
-		DWRITE_FONT_WEIGHT_REGULAR,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(16.0f),
-		L"en-uk",
-		&pErrorTextFormat
-	);
-
-	myGraphics->getWriteFactory()->CreateTextFormat(
-		L"Ariel",
-		NULL,
-		DWRITE_FONT_WEIGHT_REGULAR,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(36.0f),
-		L"en-uk",
-		&pHeadingTextFormat
-	);
-	pHeadingTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+	createDWriteResources();
 }
 
 LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -71,22 +39,25 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	case WM_DPICHANGED:
 	{
-		UINT dpi = GetDpiForWindow(m_hwnd);
+		UINT dpi = HIWORD(wParam);
+		DPIScale = dpi / 96.0f;
 
-		MoveWindow(m_usernameEdit, toPixels(16), toPixels(156), toPixels(480), toPixels(32) ,false);
+		GetClientRect(m_hwnd, &m_rect);
+		discardGraphicResources();
+
+		MoveWindow(m_usernameEdit, toPixels(16), toPixels(156), toPixels(480), toPixels(32), false);
 		MoveWindow(m_passwordEdit, toPixels(16), toPixels(244), toPixels(480), toPixels(32), false);
 		MoveWindow(m_confirmEdit, toPixels(16), toPixels(332), toPixels(480), toPixels(32), false);
 		MoveWindow(m_switchModeButton, toPixels(16), toPixels(380), toPixels(224), toPixels(32), false);
 		MoveWindow(m_loginButton, toPixels(272), toPixels(380), toPixels(224), toPixels(32), false);
-
-		DPIScale = dpi / 96.0f;
-		InvalidateRect(m_hwnd, NULL, false);
+		
+		InvalidateRect(m_hwnd, NULL, true);
 		break;
 	}
 	case WM_SIZE:
 		GetClientRect(m_hwnd, &m_rect);
 		discardGraphicResources();
-		InvalidateRect(m_hwnd, NULL, TRUE);
+		InvalidateRect(m_hwnd, NULL, true);
 		break;
 	case WM_PAINT:
 		onPaint();
@@ -259,13 +230,13 @@ void LogInWindow::onPaint() {
 	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(1.0f, 1.0f, 1.0f)));
 
 	// Draw Window
-	pRenderTarget->DrawRectangle(rectToPix(D2D1::RectF(m_rect.left,m_rect.top,m_rect.right,m_rect.bottom)),bBlack);
+	pRenderTarget->DrawRectangle(rectFromPix(D2D1::RectF(m_rect.left,m_rect.top,m_rect.right,m_rect.bottom)),bBlack);
 
 	pRenderTarget->DrawTextW(
 		L"Username: ",
 		(UINT32) 10,
 		pLoginTextFormat,
-		rectToPix(D2D1::RectF(16.0f,116.0f,480.0f,116.0f)),
+		D2D1::RectF(16.0f,116.0f,480.0f,116.0f),
 		bBlack
 	);
 
@@ -273,7 +244,7 @@ void LogInWindow::onPaint() {
 		L"Password: ",
 		(UINT32)10,
 		pLoginTextFormat,
-		rectToPix(D2D1::RectF(16.0f, 204.0f, 480.0f, 204.0f)),
+		D2D1::RectF(16.0f, 204.0f, 480.0f, 204.0f),
 		bBlack
 	);
 
@@ -282,7 +253,7 @@ void LogInWindow::onPaint() {
 		m_errorText.c_str(),
 		m_errorText.length(),
 		pErrorTextFormat,
-		rectToPix(D2D1::RectF(16.0f, 444.0f, 480.0f, 444.0f)),
+		D2D1::RectF(16.0f, 444.0f, 480.0f, 444.0f),
 		bRed
 	);
 
@@ -294,7 +265,7 @@ void LogInWindow::onPaint() {
 			L"Confirm Password: ",
 			(UINT32)19,
 			pLoginTextFormat,
-			rectToPix(D2D1::RectF(16.0f, 292.0f, 480.0f, 292.0f)),
+			D2D1::RectF(16.0f, 292.0f, 480.0f, 292.0f),
 			bBlack
 		);
 
@@ -311,7 +282,7 @@ void LogInWindow::onPaint() {
 		headerText,
 		(UINT32)length,
 		pHeadingTextFormat,
-		rectToPix(D2D1::RectF(16.0f, 16.0f, 496.0f, 16.0f)),
+		D2D1::RectF(16.0f, 16.0f, 496.0f, 16.0f),
 		bBlack
 	);
 
@@ -347,4 +318,41 @@ void LogInWindow::discardGraphicResources()
 {
 	SafeRelease(&pRenderTarget);
 	SafeRelease(&bBlack);
+}
+
+void LogInWindow::createDWriteResources()
+{
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24.0f,
+		L"en-uk",
+		&pLoginTextFormat
+	);
+
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		16.0f,
+		L"en-uk",
+		&pErrorTextFormat
+	);
+
+	myGraphics->getWriteFactory()->CreateTextFormat(
+		L"Ariel",
+		NULL,
+		DWRITE_FONT_WEIGHT_REGULAR,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		36.0f,
+		L"en-uk",
+		&pHeadingTextFormat
+	);
+	pHeadingTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 }

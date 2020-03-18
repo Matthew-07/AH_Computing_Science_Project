@@ -1,20 +1,7 @@
 #pragma once
 
 #include "GS_pch.h"
-
-// Player Inputs
-#define INP_MOVE	0x01
-#define	INP_SHIELD	0x02
-#define INP_BLINK	0x03
-#define INP_SHOCK	0x04
-#define	INP_DAGGER	0x05
-#define	INP_STONE	0x06
-
-#define SHIELD_INDEX	0
-#define BLINK_INDEX		1
-#define SHOCK_INDEX		2
-#define DAGGER_INDEX	3
-#define STONE_INDEX		4
+#include "GameConstants.h"
 
 // Data that is sent to the client
 struct PlayerData {
@@ -123,11 +110,39 @@ private:
 	void startRound();	
 
 	bool calculateCollision(float* pos1, float* mov1, float* pos2, float* mov2, float maxDist);
-	bool checkBounds(float* pos) {
-		if (sqrt(pow(pos[0], 2) + pow(pos[1], 2)) > m_mapSize) {
-			return false;
+	void restrictBounds(float* startPos, float* endPos) {
+		if (sqrt(pow(endPos[0], 2) + pow(endPos[1], 2)) > (m_mapSize - PLAYER_WIDTH)) {
+
+			if (endPos[0] == startPos[0]) {
+				// Player moved vertically, slightly adjust startPos so calculation works
+				startPos[0] += 1 / 10000;
+			}
+
+			float m = (startPos[1] - endPos[1]) / (startPos[0] - endPos[0]);
+			float yintercept = startPos[1] - m * startPos[0];
+
+			float a = pow(m, 2) + 1;
+			float b = 2 * m * yintercept;
+			float c = pow(yintercept,2) - pow(m_mapSize - PLAYER_WIDTH, 2);
+
+			float discrminant = sqrt(pow(b, 2) - 4 * a * c);
+			float root1 = (-b - discrminant) / (2 * a);
+
+			float newX, newY;
+
+			if (endPos[0] < root1) {
+				newX = root1;
+			}
+			else {
+				newX = (-b + discrminant) / (2 * a);
+			}
+
+			newY = m * newX + yintercept;
+
+			endPos[0] = newX;
+			endPos[1] = newY;
+
 		}
-		return true;
 	}
 
 	int32_t getPlayerById(int32_t id);
@@ -174,43 +189,6 @@ inline float calculateDistance(float* point1, float* point2)
 {
 	return sqrt(pow(point2[0] - point1[0], 2) + pow(point2[1] - point1[1], 2));
 }
-
-const int32_t	TICKS_PER_SECOND = 64;
-
-const int32_t	MAX_SCORE = 5;
-
-const float		PLAYER_SPEED = 60;
-const float		PLAYER_SPEED_PER_TICK = PLAYER_SPEED / TICKS_PER_SECOND;
-
-const float		SHOCKWAVE_SPEED = 600;
-const float		SHOCKWAVE_SPEED_PER_TICK = SHOCKWAVE_SPEED / TICKS_PER_SECOND;
-const int32_t	SHOCKWAVE_RANGE = 500;
-const int32_t	SHOCKWAVE_COLLISION_SIZE = 33;
-const int32_t	SHOCKWAVE_COOLDOWN = 160;
-// A shockwave takes range/speed time to finish and can at most be produced once every cooldown ticks.
-const int32_t	MAX_SHOCKWAVES = (int32_t) ceil((double) SHOCKWAVE_RANGE / (double)SHOCKWAVE_SPEED / (double) SHOCKWAVE_COOLDOWN);
-
-const float		DAGGER_SPEED = 450;
-const float		DAGGER_SPEED_PER_TICK = DAGGER_SPEED / TICKS_PER_SECOND;
-const int32_t	DAGGER_MAX_LIFETIME = 20 * TICKS_PER_SECOND; // Maximum time a dagger can exist for
-const int32_t	DAGGER_COLLISION_SIZE = 36;
-const int32_t	DAGGER_COOLDOWN = 3 * TICKS_PER_SECOND;
-const int32_t	MAX_DAGGERS = DAGGER_MAX_LIFETIME / DAGGER_COOLDOWN;
-
-const int32_t	SHIELD_DURATION = round(0.2 * TICKS_PER_SECOND);
-const int32_t	SHIELD_COOLDOWN = 3 * TICKS_PER_SECOND;
-
-const int32_t	BLINK_COOLDOWN = 2 * TICKS_PER_SECOND;
-const int32_t	BLINK_RANGE = 800;
-
-const int32_t	STONE_DURATION = 300;
-const int32_t	STONE_COOLDOWN = 600;
-
-const int32_t	POST_BLINK_COOLDOWN = round(0.15 * TICKS_PER_SECOND);
-
-const int32_t	MAP_SIZE_PER_PLAYER = 100;
-const int32_t	MAP_SIZE_CONSTANT = 300;
-const int32_t	MAP_PLAYER_BORDER = 100;
 
 /* Tasks per tick:
 

@@ -23,7 +23,7 @@ GameWindow::GameWindow(Graphics* graphics, Network* nw)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(48.0f),
+		toPixels(24.0f),
 		L"en-uk",
 		&pScoreTextFormat
 	);
@@ -35,11 +35,12 @@ GameWindow::GameWindow(Graphics* graphics, Network* nw)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(24.0f),
+		toPixels(14.0f),
 		L"en-uk",
 		&pCooldownTextFormat
 	);
 	pCooldownTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+	pCooldownTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 
 	myGraphics->getWriteFactory()->CreateTextFormat(
 		L"Ariel",
@@ -58,11 +59,6 @@ LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	Input i;
 
 	switch (uMsg) {
-	case WM_CREATE:
-	{
-		latestPacketNumber = -1;
-		break;
-	}
 	case WM_PAINT:
 	{
 		onPaint();
@@ -81,8 +77,8 @@ LRESULT GameWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if (lParam != NULL) {
 				m_userId = *(int32_t*)lParam;
 			}
-		}
-		startGame();
+			startGame();
+		}		
 		break;
 	}
 	case WM_COMMAND:
@@ -216,9 +212,21 @@ bool GameWindow::startGame()
 	char *buff = new char[maxGamestateSize];
 	m_players = new PlayerData[m_maxNumberOfPlayers];
 
+	m_teamScores = new int32_t[m_numberOfTeams];
+	for (int t = 0; t < m_numberOfTeams; t++) {
+		m_teamScores[t] = 0;
+	}
+
 	HACCEL hAccelTable = LoadAccelerators(m_inst, MAKEINTRESOURCE(IDR_ACCELERATOR1));
 
 	frameRateTimer = std::chrono::steady_clock::now();
+	frameCounter = 0;
+	frameRate = 0;
+	
+	network->clearUDPRecieveBuff();
+
+	packetRecieved = false;
+	latestPacketNumber = -1;
 
 	while (true)
 	{
@@ -241,7 +249,11 @@ bool GameWindow::startGame()
 			}
 		}
 		else {
-			if (network->recievePacket(buff)) {	
+			if (network->checkForGameEnd()){
+				ShowWindow(m_hwnd, SW_HIDE);				
+				return true;
+			}
+			else if  (network->recievePacket(buff)) {	
 				// Make sure the client recieves all waiting packets
 				while (network->recievePacket(buff)) {}
 				packetTimer = std::chrono::steady_clock::now();				
@@ -251,8 +263,12 @@ bool GameWindow::startGame()
 			InvalidateRect(m_hwnd, NULL, false);
 		}
 	}
-	delete[] buff, m_players;
-	packetRecieved = false;
+
+	m_daggers.clear();
+	m_shockwaves.clear();
+
+	delete[] buff, m_players, m_playerIds, m_playerTeams, m_teamScores;
+
 	return false;
 }
 
@@ -266,6 +282,8 @@ void GameWindow::onPaint() {
 	pRenderTarget->BeginDraw();
 
 	pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF(0.8f, 0.8f, 0.8f)));	
+
+	int32_t playerIndex = -1;
 
 	// Don't draw the game until the first packet has been recieved.
 	if (packetRecieved) {
@@ -288,7 +306,7 @@ void GameWindow::onPaint() {
 			newPositions[p][0] = m_players[p].pos[0];
 			newPositions[p][1] = m_players[p].pos[1];
 			calculateMovement(newPositions[p], m_players[p].targetPos, timeSinceLastPacket * PLAYER_SPEED);
-		}
+		}		
 
 		// Center camera on player while player is alive
 		for (int p = 0; p < m_numberOfPlayers; p++) {
@@ -296,6 +314,8 @@ void GameWindow::onPaint() {
 
 				m_camX = newPositions[p][0] - m_rect.right / 2;
 				m_camY = newPositions[p][1] - m_rect.bottom / 2;
+
+				playerIndex = p;
 				break;
 			}
 		}
@@ -306,25 +326,25 @@ void GameWindow::onPaint() {
 
 			if (m_players[p].id == m_userId) {
 				if (m_players[p].stoneDuration > 0) {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), 28, 28), bStone);
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), PLAYER_WIDTH, PLAYER_WIDTH), bStone);
 				}
 				else {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), 28, 28), bPlayer);
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), PLAYER_WIDTH, PLAYER_WIDTH), bPlayer);
 
 					if (m_players[p].shieldDuration > 0) {
-						pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), 26, 26), bShield, 5);
+						pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), PLAYER_WIDTH - 2, PLAYER_WIDTH - 2), bShield, 5);
 					}
 				}
 			}
 			else {
 				if (m_players[p].stoneDuration > 0) {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), 28, 28), bStone);
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), PLAYER_WIDTH, PLAYER_WIDTH), bStone);
 				}
 				else {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), 28, 28), teamBrushes[m_players[p].team]);
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), PLAYER_WIDTH, PLAYER_WIDTH), teamBrushes[m_players[p].team]);
 
 					if (m_players[p].shieldDuration > 0) {
-						pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), 26, 26), bShield, 5);
+						pRenderTarget->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(newPositions[p][0] - m_camX, newPositions[p][1] - m_camY), PLAYER_WIDTH - 2, PLAYER_WIDTH - 2), bShield, 5);
 					}
 				}
 			}
@@ -338,12 +358,12 @@ void GameWindow::onPaint() {
 			calculateMovement(newPos, shockwave.dest, timeSinceLastPacket * SHOCKWAVE_SPEED);
 
 			if (shockwave.team == m_userTeam) {
-				pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY), D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), bProjectileAlly, 3);
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 5, 5), bProjectileAlly);
+				pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY), D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), bProjectileAlly, SHOCKWAVE_LINE_WIDTH);
+				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), SHOCKWAVE_WIDTH, SHOCKWAVE_WIDTH), bProjectileAlly);
 			}
 			else {
-				pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY), D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), bProjectileEnemy, 3);
-				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 5, 5), bProjectileEnemy);
+				pRenderTarget->DrawLine(D2D1::Point2F(shockwave.start[0] - m_camX, shockwave.start[1] - m_camY), D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), bProjectileEnemy, SHOCKWAVE_LINE_WIDTH);
+				pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), SHOCKWAVE_WIDTH, SHOCKWAVE_WIDTH), bProjectileEnemy);
 			}
 		}
 
@@ -365,10 +385,10 @@ void GameWindow::onPaint() {
 				calculateMovement(newPos, newPositions[index], timeSinceLastPacket * DAGGER_SPEED);
 
 				if (dagger.team == m_userTeam) {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileAlly);
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), DAGGER_WIDTH, DAGGER_WIDTH), bProjectileAlly);
 				}
 				else {
-					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), 8, 8), bProjectileEnemy);
+					pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(newPos[0] - m_camX, newPos[1] - m_camY), DAGGER_WIDTH, DAGGER_WIDTH), bProjectileEnemy);
 				}
 
 			}
@@ -399,6 +419,76 @@ void GameWindow::onPaint() {
 		bBlack
 	);
 
+	// Score - the first score displayed is that of the team the user is on
+	std::wstring scoreString = std::to_wstring(m_teamScores[m_userTeam]);
+
+	for (int t = 0; t < m_numberOfTeams; t++) {
+		if (t == m_userTeam) continue;
+		scoreString += L" : " + std::to_wstring(m_teamScores[t]);
+	}
+
+	pRenderTarget->DrawTextW(
+		scoreString.c_str(),
+		scoreString.length(),
+		pScoreTextFormat,
+		D2D1::RectF(toPixels(0.0f), toPixels(16.0f), m_rect.right, toPixels(16.0f)),
+		bBlack
+	);
+	
+	if (playerIndex >= 0) {
+		std::wstring cooldownStrings[5];
+		cooldownStrings[0] = L"(Q)\nShield\n";
+		cooldownStrings[1] = L"(W)\nBlink\n";
+		cooldownStrings[2] = L"(E)\nShockwave\n";
+		cooldownStrings[3] = L"(S)\nDagger\n";
+		cooldownStrings[4] = L"(D)\nStone Form\n";
+
+		// Cooldowns
+		for (int c = 0; c < 5; c++) {
+
+			ID2D1SolidColorBrush* brush;
+			if (m_players[playerIndex].cooldowns[c] > 0) {
+				brush = bOnCooldown;
+				// Rounds to 2 d.p. by multiplying by 100 (4.23536 -> 423.536), rounding to the nearest integer (423.536 -> 424) and diving by 100 (424 -> 4.24)
+				float cooldown = round((double)m_players[playerIndex].cooldowns[c] / TICKS_PER_SECOND * 100) / 100;
+				
+				std::wstringstream stream;
+				stream << std::fixed << std::setprecision(2) << cooldown;
+				cooldownStrings[c] += stream.str();
+			}
+			else {
+				brush = bOffCooldown;
+			}
+
+			pRenderTarget->FillRectangle(
+				D2D1::RectF(
+					m_rect.right / 2 + c * toPixels(88.0f) - toPixels(216.0f),
+					m_rect.bottom - toPixels(112.0f),
+					m_rect.right / 2 + c * toPixels(88.0f) - toPixels(136.0f),
+					m_rect.bottom - toPixels(32.0f)),
+				brush);
+
+			pRenderTarget->DrawRectangle(
+				D2D1::RectF(
+					m_rect.right / 2 + c * toPixels(88.0f) - toPixels(216.0f),
+					m_rect.bottom - toPixels(112.0f),
+					m_rect.right / 2 + c * toPixels(88.0f) - toPixels(136.0f),
+					m_rect.bottom - toPixels(32.0f)),
+				bBlack);
+
+			pRenderTarget->DrawTextW(
+				cooldownStrings[c].c_str(),
+				cooldownStrings[c].length(),
+				pCooldownTextFormat,
+				D2D1::RectF(
+					m_rect.right / 2 + c * toPixels(88.0f) - toPixels(212.0f),
+					m_rect.bottom - toPixels(112.0f),
+					m_rect.right / 2 + c * toPixels(88.0f) - toPixels(140.0f),
+					m_rect.bottom - toPixels(36.0f)
+				),
+				bBlack);
+		}
+	}
 
 	//End Draw
 	pRenderTarget->EndDraw();
@@ -428,6 +518,9 @@ void GameWindow::createGraphicResources()
 
 		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Gray), &bStone);
 		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::MediumPurple), &bShield);
+
+		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.9f, 0.8f, 0.8f), &bOnCooldown);
+		pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.9f, 0.9f, 0.9f), &bOffCooldown);
 
 		UINT32 colours[5] = {
 			D2D1::ColorF::Orange,
@@ -525,6 +618,11 @@ void GameWindow::extractGamestate(char* packet)
 		DaggerData dagger = *(DaggerData*)packet;
 		packet += sizeof(DaggerData);
 		m_daggers.push_back(dagger);
+	}
+
+	for (int t = 0; t < m_numberOfTeams; t++) {
+		m_teamScores[t] = *(int32_t*)(packet);
+		packet += 4;
 	}
 
 	// At least one valid packet has been recieved!

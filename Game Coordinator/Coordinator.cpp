@@ -138,7 +138,9 @@ bool Coordinator::userConnectionsThread() {
 			printf("accept failed: %d\n\n", WSAGetLastError());
 		}
 
-		m_userThreads.push_back(std::thread(&Coordinator::userThread, this, (LPVOID) ClientSocket));
+		//m_userThreads.push_back(std::thread(&Coordinator::userThread, this, (LPVOID) ClientSocket));
+		std::thread t = std::thread(&Coordinator::userThread, this, (LPVOID)ClientSocket);
+		t.detach();
 	}
 
 	return true;
@@ -161,7 +163,9 @@ bool Coordinator::gameServerConnectionsThread() {
 		//	printf("accept failed: %d\n", WSAGetLastError());
 		//}
 
-		m_serverThreads.push_back(std::thread(&Coordinator::gameServerThread, this, (LPVOID) ClientSocket));
+		//m_serverThreads.push_back(std::thread(&Coordinator::gameServerThread, this, (LPVOID) ClientSocket));
+		std::thread t = std::thread(&Coordinator::gameServerThread, this, (LPVOID)ClientSocket);
+		t.detach();
 	}
 
 	return true;
@@ -179,6 +183,7 @@ bool Coordinator::userThread(LPVOID lParam)
 
 	SOCKET userSocket = (SOCKET)lParam;	
 	int32_t userId;
+	std::list<COMMAND> tasks;
 	
 	// Used by goto. A goto just seemed a cleaner way of going back here if the user changes account.
 	USER_THREAD_START:
@@ -211,8 +216,8 @@ bool Coordinator::userThread(LPVOID lParam)
 		else {
 			userId = m_db->logIn(username, password);
 
-			for (auto id : m_connectedPlayerIDs) {
-				if (userId == id) {
+			for (auto p : m_connectedPlayers) {
+				if (userId == p.id) {
 					userId = -5;
 					break;
 				}
@@ -224,8 +229,14 @@ bool Coordinator::userThread(LPVOID lParam)
 		//strcpy_s(sendBuff, _countof(sendBuff), msg.c_str());
 		sendData(userSocket, (char*)&userId, sizeof(userId));
 
-		if (userId > 0) {
-			m_connectedPlayerIDs.push_back(userId);
+
+		if (userId > 0) {	
+			PlayerThread player;
+			player.id = userId;
+			player.threadTasks = &tasks;
+
+			m_connectedPlayers.push_back(player);
+
 			std::cout << "Player " << userId << " has connected, ";
 			break;
 		}
@@ -245,9 +256,7 @@ bool Coordinator::userThread(LPVOID lParam)
 	FD_ZERO(&recieveSocket);
 	timeval waitTime;
 	waitTime.tv_sec = 0;
-	waitTime.tv_usec = 100;
-
-	std::list<COMMAND> tasks;
+	waitTime.tv_usec = 100;	
 
 	while (true) {
 
@@ -263,7 +272,13 @@ bool Coordinator::userThread(LPVOID lParam)
 					break;
 				}
 			}
-			m_connectedPlayerIDs.remove(userId);
+			std::list<PlayerThread>::iterator playerIt = m_connectedPlayers.begin();
+			while (playerIt != m_connectedPlayers.end()) {
+				if (playerIt->id == userId) {
+					m_connectedPlayers.erase(playerIt);
+					break;
+				}
+			}
 			mtx.unlock();
 			closesocket(userSocket);
 			return false;
@@ -282,7 +297,13 @@ bool Coordinator::userThread(LPVOID lParam)
 						break;
 					}
 				}
-				m_connectedPlayerIDs.remove(userId);
+				std::list<PlayerThread>::iterator playerIt = m_connectedPlayers.begin();
+				while (playerIt != m_connectedPlayers.end()) {
+					if (playerIt->id == userId) {
+						m_connectedPlayers.erase(playerIt);
+						break;
+					}
+				}
 				mtx.unlock();
 				closesocket(userSocket);
 
@@ -389,14 +410,20 @@ bool Coordinator::userThread(LPVOID lParam)
 			case SWITCH_ACCOUNT:
 			{
 				printf("Player %i has logged out.\n\n", userId);
-				m_connectedPlayerIDs.remove(userId);
+				std::list<PlayerThread>::iterator playerIt = m_connectedPlayers.begin();
+				while (playerIt != m_connectedPlayers.end()) {
+					if (playerIt->id == userId) {
+						m_connectedPlayers.erase(playerIt);
+						break;
+					}
+				}
 				goto USER_THREAD_START;
 			}
 			}
 		}
 
 		// Carry out any tasks required by other threads.
-		mtx.lock();
+		//mtx.lock();
 		while (tasks.size() > 0) {
 			switch (tasks.front().type) {
 			case USER_NEWGAME:
@@ -408,12 +435,28 @@ bool Coordinator::userThread(LPVOID lParam)
 				tasks.pop_front();
 				break;
 			}
+			case USER_STATS:
+			{
+				// send profile information
+				int32_t data[2] = { 0,0 };
+				m_db->getUserGameInfo(userId, &data[0], &data[1]);
+
+				sendData(userSocket, (char*)data, 8);
+				tasks.pop_front();
+				break;
+			}
 			}
 		}
-		mtx.unlock();
+		//mtx.unlock();
 	}
 
-	m_connectedPlayerIDs.remove(userId);
+	std::list<PlayerThread>::iterator playerIt = m_connectedPlayers.begin();
+	while (playerIt != m_connectedPlayers.end()) {
+		if (playerIt->id == userId) {
+			m_connectedPlayers.erase(playerIt);
+			break;
+		}
+	}
 	closesocket(userSocket);
 	return false;
 }
@@ -491,11 +534,11 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 				std::cout << "A game has finished successfully." << std::endl << std::endl;
 
 				GameInfo game;
-
-				// Date is in 'DD/MM/YYYY' format plus a NULL character at the end
+				
 				time_t now = time(0);
 				tm ltm;
 				localtime_s(&ltm, &now);
+				// Date is in 'DD/MM/YYYY' format plus a NULL character at the end
 				const char* format = "%02d/%02d/%04d";
 				sprintf_s(game.date, format, ltm.tm_mday, ltm.tm_mon + 1, ltm.tm_year + 1900);
 
@@ -521,8 +564,21 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 					game.participants[t] = new int32_t[game.numbersOfParticipants[t]];
 					recieveData(serverSocket, (char*)game.participants[t], game.numbersOfParticipants[t] * 4);
 				}
-				
+
 				m_db->addGame(game);
+
+				// Tell user threads to resend user stats
+				for (int t = 0; t < game.numberOfTeams; t++) {
+					for (int p = 0; p < game.numbersOfParticipants[t]; p++) {
+						for (auto connectedPlayer : m_connectedPlayers) {
+							if (connectedPlayer.id == game.participants[t][p]) {
+								COMMAND c;
+								c.type = USER_STATS;
+								connectedPlayer.threadTasks->push_back(c);
+							}
+						}
+					}
+				}							
 
 				delete[] game.scores;
 				for (int t = 0; t < game.numberOfTeams; t++) {
@@ -532,7 +588,7 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 			}
 			}
 		}
-		mtx.lock();
+		//mtx.lock();
 		while (tasks.size() > 0) {
 			switch (tasks.front().type) {			
 			case SERVER_NEWGAME:
@@ -560,7 +616,7 @@ bool Coordinator::gameServerThread(LPVOID lParam)
 			}
 			}
 		}
-		mtx.unlock();
+		//mtx.unlock();
 	}
 	mtx.lock();
 	std::list<Server*>::iterator it;
