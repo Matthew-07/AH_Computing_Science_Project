@@ -20,12 +20,12 @@ const int32_t	MAX_SCORE = 5;
 
 const float		PLAYER_SPEED = 60;
 const float		PLAYER_SPEED_PER_TICK = PLAYER_SPEED / TICKS_PER_SECOND;
-const int32_t	PLAYER_WIDTH = 28;
+const int32_t	PLAYER_WIDTH = 24;
 
 const float		SHOCKWAVE_SPEED = 600;
 const float		SHOCKWAVE_SPEED_PER_TICK = SHOCKWAVE_SPEED / TICKS_PER_SECOND;
 const int32_t	SHOCKWAVE_RANGE = 500;
-const int32_t	SHOCKWAVE_COOLDOWN = 160;
+const int32_t	SHOCKWAVE_COOLDOWN = 2.5 * TICKS_PER_SECOND;
 // A shockwave takes range/speed time to finish and can at most be produced once every cooldown ticks.
 const int32_t	MAX_SHOCKWAVES = (int32_t)ceil((double)SHOCKWAVE_RANGE / (double)SHOCKWAVE_SPEED / (double)SHOCKWAVE_COOLDOWN);
 const int32_t	SHOCKWAVE_WIDTH = 5;
@@ -41,7 +41,7 @@ const int32_t	DAGGER_WIDTH = 8;
 const int32_t	DAGGER_COLLISION_SIZE = PLAYER_WIDTH + DAGGER_WIDTH;
 
 const int32_t	SHIELD_DURATION = round(0.2 * TICKS_PER_SECOND);
-const int32_t	SHIELD_COOLDOWN = 3 * TICKS_PER_SECOND;
+const int32_t	SHIELD_COOLDOWN = 2.5 * TICKS_PER_SECOND;
 
 const int32_t	BLINK_COOLDOWN = 2 * TICKS_PER_SECOND;
 const int32_t	BLINK_RANGE = 800;

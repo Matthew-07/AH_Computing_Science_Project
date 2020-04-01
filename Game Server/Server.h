@@ -9,7 +9,7 @@
 #define GAME_PORT 26536
 
 //#define BUFFER_SIZE 512
-#define BUFFER_SIZE 8
+#define BUFFER_SIZE 16
 
 struct ConnectedPlayer {
 	SOCKET socket = INVALID_SOCKET;

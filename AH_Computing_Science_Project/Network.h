@@ -7,6 +7,11 @@
 
 struct Input;
 
+struct Ping {
+	int64_t time;
+	int16_t id;
+};
+
 class Network
 {
 public:
@@ -34,8 +39,8 @@ private:
 
 	bool joinGame(in6_addr* serverAddress);
 	void checkPings(in6_addr * addressBuffer, int64_t * avgPingBuffer, int numberOfServers);
-	void sendPings(SOCKET s, sockaddr_in6 * addr);
-	void recievePings(SOCKET s, int64_t** pingBuffer, in6_addr* addressBuffer, int numberOfServers);
+	void sendPings(SOCKET s, sockaddr_in6* addr, int16_t id);
+	void recievePings(SOCKET socket, int64_t** pingBuffer, int numberOfServers);
 
 	int32_t m_userId;
 

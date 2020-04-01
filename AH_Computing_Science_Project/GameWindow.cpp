@@ -23,7 +23,7 @@ GameWindow::GameWindow(Graphics* graphics, Network* nw)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(24.0f),
+		28.0f,
 		L"en-uk",
 		&pScoreTextFormat
 	);
@@ -35,7 +35,7 @@ GameWindow::GameWindow(Graphics* graphics, Network* nw)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(14.0f),
+		14.0f,
 		L"en-uk",
 		&pCooldownTextFormat
 	);
@@ -48,7 +48,7 @@ GameWindow::GameWindow(Graphics* graphics, Network* nw)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(18.0f),
+		18.0f,
 		L"en-uk",
 		&pFpsTextFormat
 	);

@@ -535,7 +535,7 @@ void Network::checkPings(in6_addr* addressBuffer, int64_t* avgPingBuffer, const 
 	}
 
 	std::thread* sendThreads = new std::thread[numberOfServers];
-	std::thread recieveThread = std::thread(&Network::recievePings, this, m_udpSocket, pingBuff, addressBuffer, numberOfServers);
+	std::thread recieveThread = std::thread(&Network::recievePings, this, m_udpSocket, pingBuff, numberOfServers);
 
 	for (int s = 0; s < numberOfServers; s++){
 		addr[s] = sockaddr_in6();
@@ -545,7 +545,7 @@ void Network::checkPings(in6_addr* addressBuffer, int64_t* avgPingBuffer, const 
 		addr[s].sin6_addr = addressBuffer[s];
 		addr[s].sin6_port = htons(26533);
 
-		sendThreads[s] = std::thread(&Network::sendPings, this, m_udpSocket, addr+s);		
+		sendThreads[s] = std::thread(&Network::sendPings, this, m_udpSocket, addr+s, s);		
 	}
 
 	recieveThread.join();
@@ -577,14 +577,14 @@ void Network::checkPings(in6_addr* addressBuffer, int64_t* avgPingBuffer, const 
 	delete[] pingBuff, sendThreads, addr;
 }
 
-void Network::sendPings(SOCKET s, sockaddr_in6* addr)
+void Network::sendPings(SOCKET s, sockaddr_in6* addr, int16_t id)
 {
-	int64_t* buff = new int64_t;
+	Ping* buff = new Ping;
 	for (int i = 0; i < 100; i++) {
-		*buff = (std::chrono::duration_cast<std::chrono::milliseconds>(
+		buff->time = (std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::system_clock::now().time_since_epoch()
-			)).count();	
-//		Sleep(2);
+			)).count();
+		buff->id = id;
 		if (sendto(s, (char*)buff, sizeof(*buff), 0, (sockaddr*) addr, sizeof(*addr)) == SOCKET_ERROR) {
 			char buff[32];
 			sprintf_s(buff,"%i",WSAGetLastError());
@@ -597,21 +597,21 @@ void Network::sendPings(SOCKET s, sockaddr_in6* addr)
 	delete buff;
 }
 
-void Network::recievePings(SOCKET s, int64_t** pingBuffer, in6_addr* addressBuffer, int numberOfServers)
+void Network::recievePings(SOCKET socket, int64_t** pingBuffer, int numberOfServers)
 {
 	struct sockaddr_in6 inAddress;
 
 	int slen = sizeof(inAddress);
 
 	int32_t* numberOfPackets = new int32_t[numberOfServers];
-	for (int s = 0; s < numberOfServers; s++) {
-		numberOfPackets[s] = 0;
+	for (int server = 0; server < numberOfServers; server++) {
+		numberOfPackets[server] = 0;
 	}
 
-	int64_t* buff = new int64_t;
+	Ping* buff = new Ping;
 	while (true) {
 		ZeroMemory(&inAddress, sizeof(inAddress));
-		if (recvfrom(s, (char*)buff, sizeof(*buff), 0, (struct sockaddr*) (&inAddress), &slen) == SOCKET_ERROR) {			
+		if (recvfrom(socket, (char*)buff, sizeof(*buff), 0, (struct sockaddr*) (&inAddress), &slen) == SOCKET_ERROR) {
 			char buff[32];
 			sprintf_s(buff, "%i", WSAGetLastError());
 			OutputDebugStringA("Error: ");
@@ -621,25 +621,37 @@ void Network::recievePings(SOCKET s, int64_t** pingBuffer, in6_addr* addressBuff
 			break;
 		}
 		else {
-			for (int s = 0; s < numberOfServers; s++) {
-				bool isEqual = true;
+			//char otherHostBuffer[256];
+			//getnameinfo((sockaddr*)&inAddress, slen, otherHostBuffer, 256, NULL, NULL, 0);
+			//for (int server = 0; server < numberOfServers; server++) {
+
+			//	if (numberOfPackets[server] >= 100) continue;
+
+				/*bool isEqual = true;
 				for (int w = 0; w < 8; w++) {
-					if (inAddress.sin6_addr.u.Word[w] != addressBuffer[s].u.Word[w]) {
+					if (inAddress.sin6_addr.u.Word[w] != addressBuffer[server].u.Word[w]) {
 						isEqual = false;
 						break;
 					}
-				}
-				if (isEqual) {
-					pingBuffer[s][numberOfPackets[s]] = (std::chrono::duration_cast<std::chrono::milliseconds>(
-						std::chrono::system_clock::now().time_since_epoch()
-						)).count() - (*buff);
-					numberOfPackets[s]++;
-					break;
-				}
-			}
-			
+				}*/
+				//char hostBuffer[256];
+				//sockaddr_in6 tempAddr;
+				//tempAddr.sin6_addr = addressBuffer[server];
+				//tempAddr.sin6_port = htons(26533);
+				//tempAddr.sin6_family = AF_INET6;
+				//getnameinfo((sockaddr*)&tempAddr, slen, hostBuffer, 256, NULL, NULL, 0);
+
+				/*int err = WSAGetLastError();
+
+				MessageBoxA(NULL, hostBuffer, (std::string("Host Buffer ") + std::to_string(err)).c_str(), NULL);
+				MessageBoxA(NULL, otherHostBuffer, "Other Host Buffer", NULL);*/
+
+			pingBuffer[buff->id][numberOfPackets[buff->id]] = (std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::system_clock::now().time_since_epoch()
+				)).count() - (buff->time);
+			numberOfPackets[buff->id]++;
 		}
-		slen = sizeof(inAddress);
+		//slen = sizeof(inAddress);
 	}	
 	delete buff;
 }

@@ -18,8 +18,6 @@
 // Also used to tell client that the game finished
 #define GAME_FINISHED 	30001
 
-
-
 bool inline sendData(SOCKET& s, char* buff, int dataLength)
 {
 	while (dataLength > 0) {

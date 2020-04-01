@@ -45,8 +45,10 @@ private:
 	bool findingGame = false;
 	std::chrono::steady_clock::time_point findGameTimer;
 
-	int32_t m_userId;
+	int32_t m_userId = -1;
 	std::string m_username;
+	IDWriteTextLayout *m_usernameLayout;
+
 	int32_t m_numberOfGames;
 	int32_t m_numberOfWins;
 

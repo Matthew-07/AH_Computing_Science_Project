@@ -21,7 +21,7 @@ MainWindow::MainWindow(Graphics * graphics, Network * nw) : pRenderTarget(NULL)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(48.0f),
+		56.0f,
 		L"en-uk",
 		&pTitleTextFormat
 	);
@@ -33,7 +33,7 @@ MainWindow::MainWindow(Graphics * graphics, Network * nw) : pRenderTarget(NULL)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(24.0f),
+		24.0f,
 		L"en-uk",
 		&pMenuTextFormat
 	);
@@ -45,7 +45,7 @@ MainWindow::MainWindow(Graphics * graphics, Network * nw) : pRenderTarget(NULL)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		toPixels(20.0f),
+		20.0f,
 		L"en-uk",
 		&pProfileTextFormat
 	);
@@ -62,12 +62,35 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		GetClientRect(m_hwnd, &m_rect);
 
 		// Main Menu Controls
-		m_findGameButton = CreateWindowEx(NULL, L"BUTTON", L"Find Game", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(256), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
-		m_logOutButton = CreateWindowEx(NULL, L"BUTTON", L"Change Account", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(320), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
-		m_exitButton = CreateWindowEx(NULL, L"BUTTON", L"Quit to Desktop", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, toPixels(32), toPixels(384), toPixels(224), toPixels(32), Window(), NULL, m_inst, NULL);
+		m_findGameButton = CreateWindowEx(NULL, L"BUTTON", L"Find Game", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 0, 0, 0, 0, Window(), NULL, m_inst, NULL);
+		m_logOutButton = CreateWindowEx(NULL, L"BUTTON", L"Change Account", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 0, 0, 0, 0, Window(), NULL, m_inst, NULL);
+		m_exitButton = CreateWindowEx(NULL, L"BUTTON", L"Quit to Desktop", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, 0, 0, 0, 0, Window(), NULL, m_inst, NULL);
 
 		// Finding Game Controls
 		m_cancelButton = CreateWindowEx(NULL, L"BUTTON", L"Cancel", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, m_rect.right / 2 - toPixels(150), m_rect.bottom - toPixels(32 + 48), toPixels(300), toPixels(48), Window(), NULL, m_inst, NULL);
+
+
+		HFONT font = CreateFont(
+			toPixels(24),
+			0.0f,
+			0.0f,
+			0.0f,
+			FW_MEDIUM,
+			false,
+			false,
+			false,
+			DEFAULT_CHARSET,
+			OUT_DEFAULT_PRECIS,
+			CLIP_DEFAULT_PRECIS,
+			ANTIALIASED_QUALITY,
+			DEFAULT_PITCH,
+			L"Ariel"
+		);
+
+		SendMessage(m_findGameButton, WM_SETFONT, (WPARAM)font, MAKELPARAM(FALSE, 0));
+		SendMessage(m_logOutButton, WM_SETFONT, (WPARAM)font, MAKELPARAM(FALSE, 0));
+		SendMessage(m_exitButton, WM_SETFONT, (WPARAM)font, MAKELPARAM(FALSE, 0));
+		SendMessage(m_cancelButton, WM_SETFONT, (WPARAM)font, MAKELPARAM(FALSE, 0));
 
 		break;
 	}
@@ -75,17 +98,9 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		UINT dpi = HIWORD(wParam);
 		DPIScale = dpi / 96.0f;
-
-		//if (m_logInHandle != NULL) {
-		//	MoveWindow(m_logInHandle, m_rect.right / 2 - toPixels(256), toPixels(32), toPixels(512), m_rect.bottom - toPixels(64), true);
-		//}
-		//if (m_gameWindowHandle != NULL) {
-		//	MoveWindow(m_gameWindowHandle, 0, 0, m_rect.right, m_rect.bottom, true);
-		//}
-
-		//break;
 	}
 	case WM_SIZE:
+	{
 		GetClientRect(m_hwnd, &m_rect);
 		discardGraphicResources();
 		InvalidateRect(m_hwnd, NULL, TRUE);
@@ -93,16 +108,22 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		m_dipRect = rectFromPix(D2D1::RectF(m_rect.left, m_rect.top, m_rect.right, m_rect.bottom));
 
 		if (m_logInHandle != NULL) {
-			MoveWindow(m_logInHandle, m_rect.right / 2 - toPixels(256), toPixels(32) , toPixels(512), m_rect.bottom - toPixels(64), true);
+			float margin = (m_rect.bottom - toPixels(672)) / 2;
+			if (margin < toPixels(32)) margin = toPixels(32);
+			MoveWindow(m_logInHandle, m_rect.right / 2 - toPixels(256), margin, toPixels(512), m_rect.bottom - 2 * margin, true);
 		}
 
 		if (m_gameWindowHandle != NULL) {
 			MoveWindow(m_gameWindowHandle, 0, 0, m_rect.right, m_rect.bottom, true);
 		}
 
-		MoveWindow(m_cancelButton, m_rect.right / 2 - toPixels(150), m_rect.bottom - toPixels(32 + 48), toPixels(300), toPixels(48), true);
+		MoveWindow(m_findGameButton, m_rect.right / 32 + toPixels(8), toPixels(256), m_rect.right / 4 + toPixels(32), toPixels(32) + m_rect.bottom / 32, true);
+		MoveWindow(m_logOutButton, m_rect.right / 32 + toPixels(8), toPixels(336) + m_rect.bottom / 16, m_rect.right / 4 + toPixels(32), toPixels(32) + m_rect.bottom / 32, true);
+		MoveWindow(m_exitButton, m_rect.right / 32 + toPixels(8), toPixels(416) + m_rect.bottom / 8, m_rect.right / 4 + toPixels(32), toPixels(32) + m_rect.bottom / 32, true);
 
+		MoveWindow(m_cancelButton, m_rect.right / 2 - toPixels(150), m_rect.bottom - toPixels(32 + 48), toPixels(300), toPixels(48), true);
 		break;
+	}
 	case WM_PAINT:
 		onPaint();
 		break;
@@ -128,6 +149,18 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				m_username = (*(AccountInfo*)lParam).username;
 
 				network->recieveProfileData(&m_numberOfGames, &m_numberOfWins);
+
+				SafeRelease(&m_usernameLayout);
+				std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+				std::wstring usernameText = L"Username: " + converter.from_bytes(m_username);
+				myGraphics->getWriteFactory()->CreateTextLayout(
+					usernameText.c_str(),
+					usernameText.size(),
+					pProfileTextFormat,
+					1024.0f,
+					20.0f,
+					&m_usernameLayout
+				);
 
 				OutputDebugStringA("Number of games: ");
 				OutputDebugStringA(std::to_string(m_numberOfGames).c_str());
@@ -213,6 +246,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 						SendMessage(m_hwnd, CA_SHOWMAIN, SW_HIDE, NULL);
 
 						// Show the login window
+						SendMessage(m_logInHandle, CA_CLEARLOGIN, NULL, NULL);
 						ShowWindow(m_logInHandle, SW_SHOW);
 					}
 				}
@@ -272,19 +306,22 @@ void MainWindow::onPaint() {
 			);
 		}
 		else {
-			pRenderTarget->FillRectangle(D2D1::RectF(m_dipRect.right / 3 * 2 + 32.0f, m_dipRect.bottom - 148.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f), bWhite);
-			pRenderTarget->DrawRectangle(D2D1::RectF(m_dipRect.right / 3 * 2 + 32.0f, m_dipRect.bottom - 148.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f), bBlack);
-
 			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-			std::wstring usernameText = L"Username: " + converter.from_bytes(m_username);
+			//std::wstring usernameText = L"Username: " + converter.from_bytes(m_username);
 			std::wstring gamePlayedText = L"Games Played: " + std::to_wstring(m_numberOfGames);
 			std::wstring gameWonText = L"Games Won: " + std::to_wstring(m_numberOfWins);
 
-			pRenderTarget->DrawTextW(
-				usernameText.c_str(),
-				usernameText.length(),
-				pProfileTextFormat,
-				D2D1::RectF(m_dipRect.right / 3 * 2 + 40.0f, m_dipRect.bottom - 146.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 126.0f),
+			DWRITE_TEXT_METRICS metrics;
+			m_usernameLayout->GetMetrics(&metrics);
+			float boxWidth = metrics.width + 16.0f;
+			if (boxWidth < 288.0f) boxWidth = 288.0f;
+
+			pRenderTarget->FillRectangle(D2D1::RectF(m_dipRect.right - boxWidth - 32.0f, m_dipRect.bottom - 148.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f), bWhite);
+			pRenderTarget->DrawRectangle(D2D1::RectF(m_dipRect.right - boxWidth - 32.0f, m_dipRect.bottom - 148.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f), bBlack);
+
+			pRenderTarget->DrawTextLayout(
+				D2D1::Point2F(m_dipRect.right - boxWidth - 24.0f, m_dipRect.bottom - 146.0f),
+				m_usernameLayout,
 				bBlack
 			);
 
@@ -292,7 +329,7 @@ void MainWindow::onPaint() {
 				gamePlayedText.c_str(),
 				gamePlayedText.length(),
 				pProfileTextFormat,
-				D2D1::RectF(m_dipRect.right / 3 * 2 + 40.0f, m_dipRect.bottom - 106.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f),
+				D2D1::RectF(m_dipRect.right - boxWidth - 24.0f, m_dipRect.bottom - 106.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f),
 				bBlack
 			);
 
@@ -300,7 +337,7 @@ void MainWindow::onPaint() {
 				gameWonText.c_str(),
 				gameWonText.length(),
 				pProfileTextFormat,
-				D2D1::RectF(m_dipRect.right / 3 * 2 + 40.0f, m_dipRect.bottom - 66.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f),
+				D2D1::RectF(m_dipRect.right - boxWidth - 24.0f, m_dipRect.bottom - 66.0f, m_dipRect.right - 32.0f, m_dipRect.bottom - 32.0f),
 				bBlack
 			);
 		}

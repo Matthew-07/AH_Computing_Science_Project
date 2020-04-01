@@ -62,6 +62,19 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		onPaint();
 		break;
+	case CA_CLEARLOGIN:
+		// Clear control text
+		textChangedByProgram = true;
+		newAccountMode = false;
+		SetWindowText(m_usernameEdit, L"");
+		SetWindowText(m_passwordEdit, L"");
+
+		SetWindowText(m_switchModeButton, L"I don't have an account.");
+		SetWindowText(m_loginButton, L"Login");
+
+		textChangedByProgram = false;
+		InvalidateRect(m_hwnd, NULL, false);
+		break;
 	case WM_COMMAND:
 		switch (HIWORD(wParam)) {
 		case BN_CLICKED:
@@ -184,7 +197,7 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 					InvalidateRect(m_hwnd, NULL, false);
 				}
 			}
-			break;
+			break;		
 
 		case EN_UPDATE:
 			if (!textChangedByProgram) {
@@ -198,6 +211,7 @@ LRESULT LogInWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 				for (int i = str.length(); i >= 0; i--) {
 					int val = str[i];
+					// If the character isn't one of the allowed characters, remove it.
 					if (!(36 <= val && val <= 57 || 65 <= val && val <= 90 || 97 <= val && val <= 122 || val && val == 95) || val == 39 || val ==  45 || val == 37){
 						str.erase(i, 1);
 					}
